@@ -432,6 +432,21 @@ app.delete('/api/admin/profesores/:id', adminAuth, (req, res) => {
     });
 });
 
+// 15. Reset de Datos (Limpiar toda la DB menos admins)
+app.post('/api/admin/reset-datos', adminAuth, (req, res) => {
+    db.serialize(() => {
+        db.run("DELETE FROM pagos");
+        db.run("DELETE FROM descuentos_mes");
+        db.run("DELETE FROM meses_config");
+        db.run("DELETE FROM profesores");
+        
+        db.run("DELETE FROM sqlite_sequence WHERE name IN ('pagos', 'descuentos_mes', 'meses_config', 'profesores')", (err) => {
+            if (err) return res.status(500).json({ error: err.message });
+            res.json({ success: true, mensaje: 'Datos reseteados. Reinicia el servidor backend para aplicar la siembra inicial si es necesario.' });
+        });
+    });
+});
+
 app.listen(3001, () => {
     console.log(`Servidor Backend corriendo en http://localhost:3001`);
 });

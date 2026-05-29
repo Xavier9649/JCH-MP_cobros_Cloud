@@ -40,9 +40,10 @@ Una vez tengas la BD, necesitas exponer los datos. El orden lógico de desarroll
    - Listar historial general (JOIN entre `pagos`, `profesores` y `meses_config`).
 4. **Endpoint Estrella - Cálculo de Deuda (`GET /api/profesores/:id/historial`):**
    - *(Reto de programación:)* Pide a la IA que extraiga todos los meses históricos desde el `mes_ingreso_id` del profesor. Si en algún mes no existe un pago con estado `aprobado`, que sume el precio base de ese mes al saldo de la deuda.
-5. **Endpoints de Escritura (POST/PUT/DELETE):**
+5. **Endpoints de Escritura y Operaciones Administrativas (POST/PUT/DELETE):**
    - Subir comprobante (`multer`).
    - Crear profesor, activar nuevo mes, aplicar ajuste/descuento.
+   - Reset de datos (`POST /api/admin/reset-datos`): Borrar registros de todas las tablas de datos (pagos, descuentos, configuración de meses, profesores) y reiniciar secuencias (`sqlite_sequence`) conservando los administradores.
 
 ---
 
@@ -71,3 +72,5 @@ La pantalla maestra para la gestión.
    - **Historial General:** Diseñar una tabla HTML que liste el historial histórico.
 4. **Filtros (Buscadores):**
    - Usar un campo de texto y filtrar el array en tiempo real (`.filter(item => item.nombre.includes(busqueda))`) antes de renderizar la tabla con `.map()`.
+5. **Zona de Peligro (Resetear Datos):**
+   - Crear un botón de acción destructiva con confirmación doble en el frontend. Al ser confirmado, invoca al endpoint de reseteo del backend y desloguea la sesión del administrador para forzar la recarga limpia.

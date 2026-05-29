@@ -80,3 +80,19 @@ const profesoresFiltrados = profesores.filter(p =>
     p.cedula.includes(searchProfesores)
 );
 ```
+
+### 5. Reseteo de Base de Datos (Zona de Peligro)
+Para facilitar el inicio de periodos reales de recaudación sin necesidad de manipular o borrar el archivo `database.db` manualmente por consola, se expone un endpoint del servidor que limpia la información transaccional y de usuarios regulares, pero conserva las credenciales de administración.
+
+**¿El Por qué?**
+Si el script eliminara a los administradores, el usuario perdería el acceso al sistema inmediatamente y quedaría bloqueado de la consola de control. Al conservar los datos de la tabla `admins`, el administrador puede reingresar y configurar los nuevos datos reales al instante.
+```javascript
+// Borrado en cascada manual de datos de negocio
+db.serialize(() => {
+    db.run("DELETE FROM pagos");
+    db.run("DELETE FROM descuentos_mes");
+    db.run("DELETE FROM meses_config");
+    db.run("DELETE FROM profesores");
+    db.run("DELETE FROM sqlite_sequence WHERE name IN ('pagos', 'descuentos_mes', 'meses_config', 'profesores')");
+});
+```

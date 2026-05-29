@@ -312,6 +312,29 @@ export default function AdminDashboard() {
     }
   };
 
+  // Resetear la base de datos
+  const resetDatos = async () => {
+    if (!window.confirm("⚠️ ¡ADVERTENCIA! Estás a punto de BORRAR TODOS LOS DATOS de la base (profesores, pagos, descuentos y configuración). Los administradores se conservarán. ¿Estás absolutamente seguro de continuar?")) return;
+    if (!window.confirm("¿Confirmas nuevamente que deseas BORRAR TODOS LOS DATOS? Esta acción no se puede deshacer.")) return;
+    
+    try {
+      const res = await fetch('http://localhost:3001/api/admin/reset-datos', {
+        method: 'POST',
+        headers: getHeaders()
+      });
+      const data = await res.json();
+      if (res.ok) {
+        alert(data.mensaje);
+        handleLogout(); // Opcional: Cerrar sesión tras el reseteo
+      } else {
+        alert("Error al resetear la base de datos: " + data.error);
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Error de conexión al intentar resetear");
+    }
+  };
+
   // --- VISTA DE LOGIN ADMIN ---
   if (!adminToken) {
     return (
@@ -959,6 +982,24 @@ export default function AdminDashboard() {
               </tbody>
             </table>
           </div>
+        </section>
+
+        {/* Zona de Peligro (Resetear Datos) */}
+        <section className="bg-rose-50 p-6 rounded-3xl shadow-sm border border-rose-200 mt-8">
+          <h3 className="text-lg font-black text-rose-700 mb-2 flex items-center justify-between">
+            <div className="flex items-center">
+              <span className="mr-2">☢️</span> Zona de Peligro
+            </div>
+          </h3>
+          <p className="text-sm text-rose-800 mb-4">
+            Al ejecutar esta acción, se borrarán todos los datos de profesores, pagos y configuración. Únicamente se conservarán los administradores.
+          </p>
+          <button
+            onClick={resetDatos}
+            className="bg-rose-600 hover:bg-rose-700 text-white px-6 py-3 rounded-xl font-bold shadow-lg shadow-rose-200 transition active:scale-95"
+          >
+            Resetear Base de Datos
+          </button>
         </section>
 
       </main>
