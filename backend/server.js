@@ -1,31 +1,34 @@
+require('dotenv').config();
 const express = require('express');
 const multer = require('multer');
 const cors = require('cors');
 const path = require('path');
 const crypto = require('crypto');
-const fs = require('fs');
+const cloudinary = require('cloudinary').v2;
+const { CloudinaryStorage } = require('multer-storage-cloudinary');
 const db = require('./database');
 
 const app = express();
 
-// Crear carpeta uploads si no existe (necesario en Railway)
-if (!fs.existsSync('uploads')) {
-    fs.mkdirSync('uploads');
-}
+// Configuración de Cloudinary
+cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET,
+});
 
 // Middleware
 app.use(cors());
 app.use(express.json());
-// Servir la carpeta de capturas para verlas en el dashboard
-app.use('/comprobantes', express.static('uploads'));
 
-// Configuración de Multer (Mejorada para conservar extensiones)
-const storage = multer.diskStorage({
-    destination: (req, file, cb) => cb(null, 'uploads/'),
-    filename: (req, file, cb) => {
-        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-        cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
-    }
+// Configuración de Multer con Cloudinary (imágenes en la nube)
+const storage = new CloudinaryStorage({
+    cloudinary: cloudinary,
+    params: {
+        folder: 'conservatorio-comprobantes',
+        allowed_formats: ['jpg', 'jpeg', 'png', 'webp', 'gif'],
+        transformation: [{ quality: 'auto', fetch_format: 'auto' }],
+    },
 });
 const upload = multer({ storage: storage });
 
@@ -177,7 +180,8 @@ app.get('/api/profesores/:id/historial', (req, res) => {
 // 4. Registrar el pago (con validación de periodo abierto)
 app.post('/api/pagos', upload.single('comprobante'), (req, res) => {
     const { profesor_id, mes_id, monto } = req.body;
-    const comprobante_path = req.file ? req.file.filename : null;
+    // Con Cloudinary, req.file.path contiene la URL pública de la imagen
+    const comprobante_path = req.file ? req.file.path : null;
 
     if (!profesor_id || !comprobante_path || !mes_id) {
         return res.status(400).json({ error: "Faltan datos o la imagen del pago" });
@@ -191,7 +195,7 @@ app.post('/api/pagos', upload.single('comprobante'), (req, res) => {
             return res.status(400).json({ error: "El periodo de recepción de comprobantes está cerrado." });
         }
 
-        // Insertar pago con estado por defecto 'pendiente'
+        // Insertar pago — comprobante_path ahora es la URL de Cloudinary
         const query = `INSERT INTO pagos (profesor_id, mes_id, monto_pagado, comprobante_path, estado) VALUES (?, ?, ?, ?, 'pendiente')`;
         db.run(query, [profesor_id, mes_id, monto, comprobante_path], function (err) {
             if (err) return res.status(500).json({ error: err.message });

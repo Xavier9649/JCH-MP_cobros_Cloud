@@ -784,7 +784,7 @@ export default function AdminDashboard() {
                     </td>
                     <td className="p-4 text-right space-x-2">
                       <button
-                        onClick={() => setFotoModal(`${API_URL}/comprobantes/${pago.comprobante_path}`)}
+                        onClick={() => setFotoModal(pago.comprobante_path)}
                         className="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-3.5 py-2 rounded-xl text-xs font-bold shadow-sm transition"
                       >
                         Ver Captura
@@ -966,7 +966,7 @@ export default function AdminDashboard() {
                     <td className="p-4 text-right">
                       {h.comprobante_path && (
                         <button
-                          onClick={() => setFotoModal(`${API_URL}/comprobantes/${h.comprobante_path}`)}
+                          onClick={() => setFotoModal(h.comprobante_path)}
                           className="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-3 py-1.5 rounded-lg text-xs font-bold transition"
                         >
                           Ver
