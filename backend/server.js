@@ -460,7 +460,7 @@ app.post('/api/admin/reset-datos', adminAuth, (req, res) => {
 // Servir el frontend en producción (Railway)
 const frontendPath = path.join(__dirname, '../frontend/dist');
 app.use(express.static(frontendPath));
-app.get('/:splat*', (req, res) => {
+app.get('/:splat(.*)', (req, res) => {
     res.sendFile(path.join(frontendPath, 'index.html'));
 });
 
