@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import API_URL from './config';
 
 export default function AdminDashboard() {
   // Estado de sesión
@@ -43,56 +44,56 @@ export default function AdminDashboard() {
 
   // Endpoints administrativos
   const fetchStats = React.useCallback(() => {
-    fetch('http://localhost:3001/api/admin/stats', { headers: getHeaders() })
+    fetch('${API_URL}/api/admin/stats', { headers: getHeaders() })
       .then(res => res.ok ? res.json() : Promise.reject())
       .then(data => setStats(data))
       .catch(() => setErrorDashboard("Error al cargar estadísticas"));
   }, [getHeaders]);
 
   const fetchPendientes = React.useCallback(() => {
-    fetch('http://localhost:3001/api/admin/pendientes', { headers: getHeaders() })
+    fetch('${API_URL}/api/admin/pendientes', { headers: getHeaders() })
       .then(res => res.ok ? res.json() : Promise.reject())
       .then(data => setPendientes(data))
       .catch(() => setErrorDashboard("Error al cargar pendientes"));
   }, [getHeaders]);
 
   const fetchPagosRecibidos = React.useCallback(() => {
-    fetch('http://localhost:3001/api/admin/pagos-recibidos', { headers: getHeaders() })
+    fetch('${API_URL}/api/admin/pagos-recibidos', { headers: getHeaders() })
       .then(res => res.ok ? res.json() : Promise.reject())
       .then(data => setPagosRecibidos(data))
       .catch(() => setErrorDashboard("Error al cargar comprobantes"));
   }, [getHeaders]);
 
   const fetchProfesores = React.useCallback(() => {
-    fetch('http://localhost:3001/api/admin/profesores', { headers: getHeaders() })
+    fetch('${API_URL}/api/admin/profesores', { headers: getHeaders() })
       .then(res => res.ok ? res.json() : Promise.reject())
       .then(data => setProfesores(data))
       .catch(() => setErrorDashboard("Error al cargar lista de profesores"));
   }, [getHeaders]);
 
   const fetchDescuentos = React.useCallback(() => {
-    fetch('http://localhost:3001/api/admin/descuentos', { headers: getHeaders() })
+    fetch('${API_URL}/api/admin/descuentos', { headers: getHeaders() })
       .then(res => res.ok ? res.json() : Promise.reject())
       .then(data => setDescuentos(data))
       .catch(() => setErrorDashboard("Error al cargar lista de descuentos"));
   }, [getHeaders]);
 
   const fetchIngresos = React.useCallback(() => {
-    fetch('http://localhost:3001/api/admin/ingresos', { headers: getHeaders() })
+    fetch('${API_URL}/api/admin/ingresos', { headers: getHeaders() })
       .then(res => res.ok ? res.json() : Promise.reject())
       .then(data => setIngresos({ total: data.total || 0, historico: data.total_historico || 0 }))
       .catch(() => setErrorDashboard("Error al cargar ingresos"));
   }, [getHeaders]);
 
   const fetchHistorialGeneral = React.useCallback(() => {
-    fetch('http://localhost:3001/api/admin/historial-general', { headers: getHeaders() })
+    fetch('${API_URL}/api/admin/historial-general', { headers: getHeaders() })
       .then(res => res.ok ? res.json() : Promise.reject())
       .then(data => setHistorialGeneral(data))
       .catch(() => setErrorDashboard("Error al cargar historial general"));
   }, [getHeaders]);
 
   const fetchMesActual = React.useCallback(() => {
-    fetch('http://localhost:3001/api/mes-actual')
+    fetch('${API_URL}/api/mes-actual')
       .then(res => res.ok ? res.json() : null)
       .then(data => {
         if (data) {
@@ -129,7 +130,7 @@ export default function AdminDashboard() {
     e.preventDefault();
     setLoginError("");
     try {
-      const res = await fetch('http://localhost:3001/api/auth/admin/login', {
+      const res = await fetch('${API_URL}/api/auth/admin/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username: loginUser, password: loginPass })
@@ -161,7 +162,7 @@ export default function AdminDashboard() {
   const guardarConfig = async (e) => {
     e.preventDefault();
     try {
-      const res = await fetch('http://localhost:3001/api/admin/config-mes', {
+      const res = await fetch('${API_URL}/api/admin/config-mes', {
         method: 'POST',
         headers: getHeaders(),
         body: JSON.stringify(config)
@@ -182,7 +183,7 @@ export default function AdminDashboard() {
     e.preventDefault();
     if (!docenteSeleccionado || !montoDescuento) return;
     try {
-      const res = await fetch('http://localhost:3001/api/admin/descuentos', {
+      const res = await fetch('${API_URL}/api/admin/descuentos', {
         method: 'POST',
         headers: getHeaders(),
         body: JSON.stringify({ profesor_id: docenteSeleccionado.id, descuento: parseFloat(montoDescuento) })
@@ -203,7 +204,7 @@ export default function AdminDashboard() {
   // Eliminar descuento
   const eliminarDescuento = async (id) => {
     try {
-      const res = await fetch(`http://localhost:3001/api/admin/descuentos/${id}`, {
+      const res = await fetch(`${API_URL}/api/admin/descuentos/${id}`, {
         method: 'DELETE',
         headers: getHeaders()
       });
@@ -216,7 +217,7 @@ export default function AdminDashboard() {
   // Abrir / Cerrar recepción de pagos
   const toggleProcesoPago = async () => {
     try {
-      const res = await fetch('http://localhost:3001/api/admin/toggle-abierto', {
+      const res = await fetch('${API_URL}/api/admin/toggle-abierto', {
         method: 'POST',
         headers: getHeaders()
       });
@@ -235,7 +236,7 @@ export default function AdminDashboard() {
   // Validar comprobantes (Aprobar o Rechazar)
   const validarPago = async (pago_id, nuevoEstado) => {
     try {
-      const res = await fetch('http://localhost:3001/api/admin/validar-pago', {
+      const res = await fetch('${API_URL}/api/admin/validar-pago', {
         method: 'POST',
         headers: getHeaders(),
         body: JSON.stringify({ pago_id, estado: nuevoEstado })
@@ -255,7 +256,7 @@ export default function AdminDashboard() {
     e.preventDefault();
     if (!nuevoProfe.nombre || !nuevoProfe.cedula) return;
     try {
-      const res = await fetch('http://localhost:3001/api/admin/profesores', {
+      const res = await fetch('${API_URL}/api/admin/profesores', {
         method: 'POST',
         headers: getHeaders(),
         body: JSON.stringify(nuevoProfe)
@@ -277,7 +278,7 @@ export default function AdminDashboard() {
     e.preventDefault();
     if (!profeEditando) return;
     try {
-      const res = await fetch(`http://localhost:3001/api/admin/profesores/${profeEditando.id}`, {
+      const res = await fetch(`${API_URL}/api/admin/profesores/${profeEditando.id}`, {
         method: 'PUT',
         headers: getHeaders(),
         body: JSON.stringify(profeEditando)
@@ -298,7 +299,7 @@ export default function AdminDashboard() {
   const eliminarProfesor = async (id) => {
     if (!window.confirm("¿Seguro que deseas eliminar a este profesor?")) return;
     try {
-      const res = await fetch(`http://localhost:3001/api/admin/profesores/${id}`, {
+      const res = await fetch(`${API_URL}/api/admin/profesores/${id}`, {
         method: 'DELETE',
         headers: getHeaders()
       });
@@ -318,7 +319,7 @@ export default function AdminDashboard() {
     if (!window.confirm("¿Confirmas nuevamente que deseas BORRAR TODOS LOS DATOS? Esta acción no se puede deshacer.")) return;
     
     try {
-      const res = await fetch('http://localhost:3001/api/admin/reset-datos', {
+      const res = await fetch('${API_URL}/api/admin/reset-datos', {
         method: 'POST',
         headers: getHeaders()
       });
@@ -783,7 +784,7 @@ export default function AdminDashboard() {
                     </td>
                     <td className="p-4 text-right space-x-2">
                       <button
-                        onClick={() => setFotoModal(`http://localhost:3001/comprobantes/${pago.comprobante_path}`)}
+                        onClick={() => setFotoModal(`${API_URL}/comprobantes/${pago.comprobante_path}`)}
                         className="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-3.5 py-2 rounded-xl text-xs font-bold shadow-sm transition"
                       >
                         Ver Captura
@@ -965,7 +966,7 @@ export default function AdminDashboard() {
                     <td className="p-4 text-right">
                       {h.comprobante_path && (
                         <button
-                          onClick={() => setFotoModal(`http://localhost:3001/comprobantes/${h.comprobante_path}`)}
+                          onClick={() => setFotoModal(`${API_URL}/comprobantes/${h.comprobante_path}`)}
                           className="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-3 py-1.5 rounded-lg text-xs font-bold transition"
                         >
                           Ver

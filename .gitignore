@@ -1,0 +1,21 @@
+# Dependencias
+node_modules/
+backend/node_modules/
+frontend/node_modules/
+
+# Base de datos (se genera automáticamente al iniciar)
+backend/database.db
+
+# Archivos subidos por usuarios (comprobantes)
+backend/uploads/
+
+# Build del frontend (se genera en CI/CD)
+frontend/dist/
+
+# Variables de entorno
+.env
+.env.local
+
+# Sistema operativo
+.DS_Store
+Thumbs.db

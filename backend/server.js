@@ -3,9 +3,15 @@ const multer = require('multer');
 const cors = require('cors');
 const path = require('path');
 const crypto = require('crypto');
+const fs = require('fs');
 const db = require('./database');
 
 const app = express();
+
+// Crear carpeta uploads si no existe (necesario en Railway)
+if (!fs.existsSync('uploads')) {
+    fs.mkdirSync('uploads');
+}
 
 // Middleware
 app.use(cors());
@@ -447,7 +453,14 @@ app.post('/api/admin/reset-datos', adminAuth, (req, res) => {
     });
 });
 
-app.listen(3001, () => {
-    console.log(`Servidor Backend corriendo en http://localhost:3001`);
+// Servir el frontend en producción (Railway)
+const frontendPath = path.join(__dirname, '../frontend/dist');
+app.use(express.static(frontendPath));
+app.get('*', (req, res) => {
+    res.sendFile(path.join(frontendPath, 'index.html'));
 });
-console.log("Reiniciando para siembra correcta...");
+
+const PORT = process.env.PORT || 3001;
+app.listen(PORT, () => {
+    console.log(`Servidor corriendo en puerto ${PORT}`);
+});

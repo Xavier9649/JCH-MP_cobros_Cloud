@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import API_URL from './config';
 
 export default function FormularioPago() {
   // Estados del Profesor e Inicio de Sesión
@@ -24,7 +25,7 @@ export default function FormularioPago() {
     if (!profesor) return;
     // Evitar set-state sincrónico en useEffect
     setTimeout(() => setCargando(true), 0);
-    fetch(`http://localhost:3001/api/profesores/${profesor.id}/historial`)
+    fetch(`${API_URL}/api/profesores/${profesor.id}/historial`)
       .then(res => res.json())
       .then(data => {
         setHistorial(data.pagos || []);
@@ -51,7 +52,7 @@ export default function FormularioPago() {
     if (!cedulaInput.trim()) return setLoginError("Por favor ingrese su número de cédula");
 
     try {
-      const res = await fetch('http://localhost:3001/api/auth/profesor/login', {
+      const res = await fetch('${API_URL}/api/auth/profesor/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ cedula: cedulaInput.trim() })
@@ -132,7 +133,7 @@ export default function FormularioPago() {
     formData.append('monto', mesActivo.precioFinal);
 
     try {
-      const res = await fetch('http://localhost:3001/api/pagos', {
+      const res = await fetch('${API_URL}/api/pagos', {
         method: 'POST',
         body: formData,
       });
