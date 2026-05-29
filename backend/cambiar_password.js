@@ -1,6 +1,5 @@
-const sqlite3 = require('sqlite3').verbose();
+const db = require('./database');
 const crypto = require('crypto');
-const db = new sqlite3.Database('./database.db');
 
 const args = process.argv.slice(2);
 

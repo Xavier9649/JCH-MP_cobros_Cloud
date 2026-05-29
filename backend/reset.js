@@ -1,5 +1,4 @@
-const sqlite3 = require('sqlite3').verbose();
-const db = new sqlite3.Database('database.db');
+const db = require('./database');
 
 db.serialize(() => {
     console.log("Dropping all tables...");
