@@ -96,7 +96,7 @@ app.get('/api/profesores', (req, res) => {
 app.get('/api/mes-actual', (req, res) => {
     db.get("SELECT * FROM meses_config WHERE activo = 1", (err, row) => {
         if (row) {
-            const precioFinal = row.precio_base - row.descuento;
+            const precioFinal = row.precio_base;
             res.json({ ...row, precioFinal });
         } else {
             res.status(404).json({ error: "No hay un periodo de cobro activo" });
@@ -457,6 +457,11 @@ app.post('/api/admin/reset-datos', adminAuth, (req, res) => {
     });
 });
 
+app.use((err, req, res, next) => {
+    console.error("DEBUG ERROR HANDLER:", err);
+    res.status(500).json({ error: err.message || err.toString(), stack: err.stack, details: err });
+});
+
 // Servir el frontend en producción (Railway)
 const frontendPath = path.join(__dirname, '../frontend/dist');
 app.use(express.static(frontendPath));
@@ -468,3 +473,4 @@ const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
     console.log(`Servidor corriendo en puerto ${PORT}`);
 });
+// Trigger nodemon restart 2

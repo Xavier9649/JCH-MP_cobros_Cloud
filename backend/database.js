@@ -161,40 +161,48 @@ if (process.env.DATABASE_URL) {
     db = new sqlite3.Database('./database.db');
 }
 
-// Inicialización de esquema y semilla
-db.serialize(() => {
-    if (process.env.DATABASE_URL) {
-        // En PostgreSQL creamos las tablas y aplicamos las columnas condicionalmente de forma más directa
-        crearTablasYSembrar();
-        db.run("ALTER TABLE profesores ADD COLUMN IF NOT EXISTS mes_ingreso_id INTEGER DEFAULT 1");
-        db.run("ALTER TABLE profesores ADD COLUMN IF NOT EXISTS celular TEXT DEFAULT ''");
-    } else {
-        // SQLite original
-        db.all("PRAGMA table_info(profesores)", (err, columns) => {
-            const hasCedula = columns && columns.some(col => col.name === 'cedula');
-            const hasMesIngreso = columns && columns.some(col => col.name === 'mes_ingreso_id');
-            const hasCelular = columns && columns.some(col => col.name === 'celular');
-            
-            if (columns && columns.length > 0 && !hasCedula) {
-                console.log("Detectado esquema antiguo sin columna 'cedula'. Reiniciando base de datos...");
-                db.run("DROP TABLE IF EXISTS pagos");
-                db.run("DROP TABLE IF EXISTS profesores");
-                db.run("DROP TABLE IF EXISTS meses_config");
-                db.run("DROP TABLE IF EXISTS admins");
-                db.run("DROP TABLE IF EXISTS descuentos_mes");
-                crearTablasYSembrar();
-            } else {
-                if (columns && columns.length > 0 && !hasMesIngreso) {
-                    db.run("ALTER TABLE profesores ADD COLUMN mes_ingreso_id INTEGER DEFAULT 1");
+// Inicialización de esquema y semilla (se ejecuta solo al levantar el servidor o forzar con variable de entorno)
+const isRunningServer = require.main && require.main.filename && (
+    require.main.filename.includes('server.js') || 
+    require.main.filename.includes('server.cjs')
+);
+
+if (isRunningServer || process.env.FORCE_INIT_DB) {
+    db.serialize(() => {
+        if (process.env.DATABASE_URL) {
+            // En PostgreSQL creamos las tablas y aplicamos las columnas condicionalmente de forma más directa
+            crearTablasYSembrar();
+            db.run("ALTER TABLE profesores ADD COLUMN IF NOT EXISTS mes_ingreso_id INTEGER DEFAULT 1");
+            db.run("ALTER TABLE profesores ADD COLUMN IF NOT EXISTS celular TEXT DEFAULT ''");
+        } else {
+            // SQLite original
+            db.all("PRAGMA table_info(profesores)", (err, columns) => {
+                if (err) return;
+                const hasCedula = columns && columns.some(col => col.name === 'cedula');
+                const hasMesIngreso = columns && columns.some(col => col.name === 'mes_ingreso_id');
+                const hasCelular = columns && columns.some(col => col.name === 'celular');
+                
+                if (columns && columns.length > 0 && !hasCedula) {
+                    console.log("Detectado esquema antiguo sin columna 'cedula'. Reiniciando base de datos...");
+                    db.run("DROP TABLE IF EXISTS pagos");
+                    db.run("DROP TABLE IF EXISTS profesores");
+                    db.run("DROP TABLE IF EXISTS meses_config");
+                    db.run("DROP TABLE IF EXISTS admins");
+                    db.run("DROP TABLE IF EXISTS descuentos_mes");
+                    crearTablasYSembrar();
+                } else {
+                    if (columns && columns.length > 0 && !hasMesIngreso) {
+                        db.run("ALTER TABLE profesores ADD COLUMN mes_ingreso_id INTEGER DEFAULT 1");
+                    }
+                    if (columns && columns.length > 0 && !hasCelular) {
+                        db.run("ALTER TABLE profesores ADD COLUMN celular TEXT DEFAULT ''");
+                    }
+                    crearTablasYSembrar();
                 }
-                if (columns && columns.length > 0 && !hasCelular) {
-                    db.run("ALTER TABLE profesores ADD COLUMN celular TEXT DEFAULT ''");
-                }
-                crearTablasYSembrar();
-            }
-        });
-    }
-});
+            });
+        }
+    });
+}
 
 function crearTablasYSembrar() {
     db.serialize(() => {
@@ -250,6 +258,7 @@ function crearTablasYSembrar() {
         )`, () => {
             // Sembrar Administrador por defecto si no hay ninguno
             db.get("SELECT COUNT(*) as count FROM admins", (err, row) => {
+                if (err) return;
                 // SQLite devuelve { count: N }, pg puede devolverlo diferente pero get emulado entrega la fila
                 const count = row ? parseInt(row.count || row.count_all || 0) : 0;
                 if (count === 0) {
@@ -265,6 +274,7 @@ function crearTablasYSembrar() {
 
         // Sembrar Profesores si la tabla está vacía
         db.get("SELECT COUNT(*) as count FROM profesores", (err, row) => {
+            if (err) return;
             const count = row ? parseInt(row.count || 0) : 0;
             if (count === 0) {
                 const profesoresSemilla = [
@@ -275,7 +285,9 @@ function crearTablasYSembrar() {
                 
                 // Usamos inserts individuales secuenciales en lugar de db.prepare (que no es parte del subset mínimo)
                 profesoresSemilla.forEach(p => {
-                    db.run("INSERT INTO profesores (nombre, cedula, celular, activo) VALUES (?, ?, ?, 1)", [p.nombre, p.cedula, p.celular]);
+                    db.run("INSERT INTO profesores (nombre, cedula, celular, activo) VALUES (?, ?, ?, 1)", [p.nombre, p.cedula, p.celular], (err) => {
+                        if (err) console.error("Error al sembrar profesor:", err.message);
+                    });
                 });
                 console.log("Profesores semilla insertados con éxito.");
             }
@@ -283,14 +295,15 @@ function crearTablasYSembrar() {
 
         // Sembrar un mes por defecto si está vacío
         db.get("SELECT COUNT(*) as count FROM meses_config", (err, row) => {
+            if (err) return;
             const count = row ? parseInt(row.count || 0) : 0;
             if (count === 0) {
                 db.run(
                     "INSERT INTO meses_config (mes_nombre, precio_base, descuento, activo, abierto) VALUES (?, ?, ?, 1, 1)",
-                    ["Mayo 2026", 10.0, 2.0],
+                    ["Mayo 2026", 10.0, 0.0],
                     (err) => {
                         if (err) console.error("Error al sembrar mes inicial:", err.message);
-                        else console.log("Mes de prueba 'Mayo 2026' sembrado ($10.0 base, $2.0 dcto).");
+                        else console.log("Mes de prueba 'Mayo 2026' sembrado ($10.0 base, sin descuento por defecto).");
                     }
                 );
             }

@@ -22,13 +22,17 @@ db.run("UPDATE admins SET password_hash = ? WHERE username = 'admin'", [nuevoHas
     if (err) {
         console.error("Error al actualizar la contraseña:", err.message);
     } else {
-        if (this.changes > 0) {
+        if (this && this.changes > 0) {
+            console.log("✅ ¡Éxito! La contraseña del usuario 'admin' ha sido actualizada.");
+            console.log(`Nueva contraseña: ${nuevaPassword}`);
+        } else if (!this) {
+            // Caso de PostgresAdapter donde this no es accesible pero se ejecutó
             console.log("✅ ¡Éxito! La contraseña del usuario 'admin' ha sido actualizada.");
             console.log(`Nueva contraseña: ${nuevaPassword}`);
         } else {
             console.log("⚠️ No se encontró al usuario 'admin' en la base de datos.");
         }
     }
+    db.close();
 });
 
-db.close();
