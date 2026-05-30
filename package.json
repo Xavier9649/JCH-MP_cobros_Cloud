@@ -2,7 +2,7 @@
   "name": "internet-conservatorio",
   "version": "1.0.0",
   "scripts": {
-    "build": "cd frontend && npm install && npm run build",
+    "build": "cd frontend && npm install --include=optional && npm run build",
     "start": "node backend/server.js",
     "install:backend": "cd backend && npm install"
   }
