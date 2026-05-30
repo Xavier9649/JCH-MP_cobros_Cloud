@@ -65,7 +65,7 @@ Railway soporta aplicaciones Node.js con disco persistente y es muy sencillo.
    const PORT = process.env.PORT || 3001;
    app.listen(PORT, () => console.log(`Servidor corriendo en puerto ${PORT}`));
    ```
-5. Seleccionar la carpeta `backend` como directorio raíz del servicio.
+5. Dejar el directorio raíz (Root Directory) por defecto en Railway (la raíz del repositorio `.`), de modo que pueda compilar el frontend y backend juntos.
 6. Railway construirá y desplegará automáticamente al hacer `git push`.
 
 > **Nota:** El disco en el plan gratuito se reinicia periódicamente. Los comprobantes subidos pueden perderse. Para producción real, usar el plan pagado o Opción A.

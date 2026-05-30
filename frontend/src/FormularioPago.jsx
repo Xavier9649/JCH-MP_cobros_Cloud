@@ -52,7 +52,7 @@ export default function FormularioPago() {
     if (!cedulaInput.trim()) return setLoginError("Por favor ingrese su número de cédula");
 
     try {
-      const res = await fetch('${API_URL}/api/auth/profesor/login', {
+      const res = await fetch(`${API_URL}/api/auth/profesor/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ cedula: cedulaInput.trim() })
@@ -133,7 +133,7 @@ export default function FormularioPago() {
     formData.append('monto', mesActivo.precioFinal);
 
     try {
-      const res = await fetch('${API_URL}/api/pagos', {
+      const res = await fetch(`${API_URL}/api/pagos`, {
         method: 'POST',
         body: formData,
       });

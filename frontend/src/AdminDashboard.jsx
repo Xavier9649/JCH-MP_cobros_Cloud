@@ -44,56 +44,56 @@ export default function AdminDashboard() {
 
   // Endpoints administrativos
   const fetchStats = React.useCallback(() => {
-    fetch('${API_URL}/api/admin/stats', { headers: getHeaders() })
+    fetch(`${API_URL}/api/admin/stats`, { headers: getHeaders() })
       .then(res => res.ok ? res.json() : Promise.reject())
       .then(data => setStats(data))
       .catch(() => setErrorDashboard("Error al cargar estadísticas"));
   }, [getHeaders]);
 
   const fetchPendientes = React.useCallback(() => {
-    fetch('${API_URL}/api/admin/pendientes', { headers: getHeaders() })
+    fetch(`${API_URL}/api/admin/pendientes`, { headers: getHeaders() })
       .then(res => res.ok ? res.json() : Promise.reject())
       .then(data => setPendientes(data))
       .catch(() => setErrorDashboard("Error al cargar pendientes"));
   }, [getHeaders]);
 
   const fetchPagosRecibidos = React.useCallback(() => {
-    fetch('${API_URL}/api/admin/pagos-recibidos', { headers: getHeaders() })
+    fetch(`${API_URL}/api/admin/pagos-recibidos`, { headers: getHeaders() })
       .then(res => res.ok ? res.json() : Promise.reject())
       .then(data => setPagosRecibidos(data))
       .catch(() => setErrorDashboard("Error al cargar comprobantes"));
   }, [getHeaders]);
 
   const fetchProfesores = React.useCallback(() => {
-    fetch('${API_URL}/api/admin/profesores', { headers: getHeaders() })
+    fetch(`${API_URL}/api/admin/profesores`, { headers: getHeaders() })
       .then(res => res.ok ? res.json() : Promise.reject())
       .then(data => setProfesores(data))
       .catch(() => setErrorDashboard("Error al cargar lista de profesores"));
   }, [getHeaders]);
 
   const fetchDescuentos = React.useCallback(() => {
-    fetch('${API_URL}/api/admin/descuentos', { headers: getHeaders() })
+    fetch(`${API_URL}/api/admin/descuentos`, { headers: getHeaders() })
       .then(res => res.ok ? res.json() : Promise.reject())
       .then(data => setDescuentos(data))
       .catch(() => setErrorDashboard("Error al cargar lista de descuentos"));
   }, [getHeaders]);
 
   const fetchIngresos = React.useCallback(() => {
-    fetch('${API_URL}/api/admin/ingresos', { headers: getHeaders() })
+    fetch(`${API_URL}/api/admin/ingresos`, { headers: getHeaders() })
       .then(res => res.ok ? res.json() : Promise.reject())
       .then(data => setIngresos({ total: data.total || 0, historico: data.total_historico || 0 }))
       .catch(() => setErrorDashboard("Error al cargar ingresos"));
   }, [getHeaders]);
 
   const fetchHistorialGeneral = React.useCallback(() => {
-    fetch('${API_URL}/api/admin/historial-general', { headers: getHeaders() })
+    fetch(`${API_URL}/api/admin/historial-general`, { headers: getHeaders() })
       .then(res => res.ok ? res.json() : Promise.reject())
       .then(data => setHistorialGeneral(data))
       .catch(() => setErrorDashboard("Error al cargar historial general"));
   }, [getHeaders]);
 
   const fetchMesActual = React.useCallback(() => {
-    fetch('${API_URL}/api/mes-actual')
+    fetch(`${API_URL}/api/mes-actual`)
       .then(res => res.ok ? res.json() : null)
       .then(data => {
         if (data) {
@@ -130,7 +130,7 @@ export default function AdminDashboard() {
     e.preventDefault();
     setLoginError("");
     try {
-      const res = await fetch('${API_URL}/api/auth/admin/login', {
+      const res = await fetch(`${API_URL}/api/auth/admin/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username: loginUser, password: loginPass })
@@ -162,7 +162,7 @@ export default function AdminDashboard() {
   const guardarConfig = async (e) => {
     e.preventDefault();
     try {
-      const res = await fetch('${API_URL}/api/admin/config-mes', {
+      const res = await fetch(`${API_URL}/api/admin/config-mes`, {
         method: 'POST',
         headers: getHeaders(),
         body: JSON.stringify(config)
@@ -183,7 +183,7 @@ export default function AdminDashboard() {
     e.preventDefault();
     if (!docenteSeleccionado || !montoDescuento) return;
     try {
-      const res = await fetch('${API_URL}/api/admin/descuentos', {
+      const res = await fetch(`${API_URL}/api/admin/descuentos`, {
         method: 'POST',
         headers: getHeaders(),
         body: JSON.stringify({ profesor_id: docenteSeleccionado.id, descuento: parseFloat(montoDescuento) })
@@ -217,7 +217,7 @@ export default function AdminDashboard() {
   // Abrir / Cerrar recepción de pagos
   const toggleProcesoPago = async () => {
     try {
-      const res = await fetch('${API_URL}/api/admin/toggle-abierto', {
+      const res = await fetch(`${API_URL}/api/admin/toggle-abierto`, {
         method: 'POST',
         headers: getHeaders()
       });
@@ -236,7 +236,7 @@ export default function AdminDashboard() {
   // Validar comprobantes (Aprobar o Rechazar)
   const validarPago = async (pago_id, nuevoEstado) => {
     try {
-      const res = await fetch('${API_URL}/api/admin/validar-pago', {
+      const res = await fetch(`${API_URL}/api/admin/validar-pago`, {
         method: 'POST',
         headers: getHeaders(),
         body: JSON.stringify({ pago_id, estado: nuevoEstado })
@@ -256,7 +256,7 @@ export default function AdminDashboard() {
     e.preventDefault();
     if (!nuevoProfe.nombre || !nuevoProfe.cedula) return;
     try {
-      const res = await fetch('${API_URL}/api/admin/profesores', {
+      const res = await fetch(`${API_URL}/api/admin/profesores`, {
         method: 'POST',
         headers: getHeaders(),
         body: JSON.stringify(nuevoProfe)
@@ -319,7 +319,7 @@ export default function AdminDashboard() {
     if (!window.confirm("¿Confirmas nuevamente que deseas BORRAR TODOS LOS DATOS? Esta acción no se puede deshacer.")) return;
     
     try {
-      const res = await fetch('${API_URL}/api/admin/reset-datos', {
+      const res = await fetch(`${API_URL}/api/admin/reset-datos`, {
         method: 'POST',
         headers: getHeaders()
       });
