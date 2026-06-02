@@ -28,6 +28,11 @@ export default function FormularioPago() {
   const [preview, setPreview] = useState(null);
   const [mensajeEnvio, setMensajeEnvio] = useState("");
   const [subiendo, setSubiendo] = useState(false);
+  const [reintentando, setReintentando] = useState(false);
+
+  useEffect(() => {
+    setReintentando(false);
+  }, [pagoActual]);
 
   const cargarDatosProfesor = React.useCallback(() => {
     if (!profesor) return;
@@ -340,11 +345,19 @@ export default function FormularioPago() {
                             <span className="text-2xl mb-1">❌</span>
                             <span>Comprobante Rechazado</span>
                             <span className="text-xs font-normal text-rose-600 mt-1 mb-3">Tu comprobante no pudo ser validado.</span>
-                            {mesActivo.abierto === 1 ? (
+                            {mesActivo.abierto === 1 && !reintentando && (
+                              <button
+                                onClick={() => setReintentando(true)}
+                                className="mt-2 w-full bg-rose-600 hover:bg-rose-700 text-white font-bold py-2.5 px-4 rounded-xl text-xs transition-all active:scale-95 shadow-md shadow-rose-200"
+                              >
+                                Volver a intentar 🔄
+                              </button>
+                            )}
+                            {mesActivo.abierto === 1 && reintentando && (
                               <p className="text-xs text-rose-700 italic bg-white px-3 py-1.5 rounded-lg border border-rose-200">
-                                Por favor, vuelve a subir el comprobante correcto abajo.
+                                Por favor, sube el nuevo comprobante en la sección de la derecha.
                               </p>
-                            ) : null}
+                            )}
                           </div>
                         )}
                       </div>
@@ -378,9 +391,11 @@ export default function FormularioPago() {
           <div className="md:col-span-3 space-y-6">
             
             {/* Zona de Carga de Comprobante (Habilitado solo si el mes está abierto y no se ha pagado o está rechazado) */}
-            {mesActivo && mesActivo.abierto === 1 && (!pagoActual || pagoActual.estado === 'rechazado') && (
+            {mesActivo && mesActivo.abierto === 1 && (!pagoActual || (pagoActual.estado === 'rechazado' && reintentando)) && (
               <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
-                <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">Registrar Comprobante</h3>
+                <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">
+                  {pagoActual?.estado === 'rechazado' ? "Volver a Registrar Comprobante" : "Registrar Comprobante"}
+                </h3>
                 <div className="space-y-4">
                   <div className={`p-8 border-2 border-dashed rounded-2xl text-center transition-all ${preview ? 'border-emerald-400 bg-emerald-50/20' : 'border-indigo-200 bg-indigo-50/10 hover:bg-indigo-50/30'}`}>
                     {!preview ? (
