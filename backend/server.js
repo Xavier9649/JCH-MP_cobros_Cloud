@@ -1,4 +1,4 @@
-require('dotenv').config();
+require('dotenv').config({ path: require('path').join(__dirname, '.env') });
 const express = require('express');
 const multer = require('multer');
 const cors = require('cors');
@@ -195,11 +195,19 @@ app.post('/api/pagos', upload.single('comprobante'), (req, res) => {
             return res.status(400).json({ error: "El periodo de recepción de comprobantes está cerrado." });
         }
 
-        // Insertar pago — comprobante_path ahora es la URL de Cloudinary
-        const query = `INSERT INTO pagos (profesor_id, mes_id, monto_pagado, comprobante_path, estado) VALUES (?, ?, ?, ?, 'pendiente')`;
-        db.run(query, [profesor_id, mes_id, monto, comprobante_path], function (err) {
+        // Verificar si ya existe un pago pendiente o aprobado para este periodo
+        db.get("SELECT id FROM pagos WHERE profesor_id = ? AND mes_id = ? AND estado != 'rechazado'", [profesor_id, mes_id], (err, pagoExistente) => {
             if (err) return res.status(500).json({ error: err.message });
-            res.json({ success: true, id: this.lastID });
+            if (pagoExistente) {
+                return res.status(400).json({ error: "Ya existe un pago registrado (pendiente o aprobado) para este periodo." });
+            }
+
+            // Insertar pago — comprobante_path ahora es la URL de Cloudinary
+            const query = `INSERT INTO pagos (profesor_id, mes_id, monto_pagado, comprobante_path, estado) VALUES (?, ?, ?, ?, 'pendiente')`;
+            db.run(query, [profesor_id, mes_id, monto, comprobante_path], function (err) {
+                if (err) return res.status(500).json({ error: err.message });
+                res.json({ success: true, id: this.lastID });
+            });
         });
     });
 });

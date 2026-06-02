@@ -3,7 +3,17 @@ import API_URL from './config';
 
 export default function AdminDashboard() {
   // Estado de sesión
-  const [adminToken, setAdminToken] = useState(() => localStorage.getItem('adminSesion'));
+  const [adminToken, setAdminToken] = useState(() => {
+    const token = localStorage.getItem('adminSesion');
+    const lastActive = localStorage.getItem('adminLastActive');
+    const INACTIVITY_TIMEOUT = 15 * 60 * 1000; // 15 minutos
+    if (token && lastActive && Date.now() - parseInt(lastActive) > INACTIVITY_TIMEOUT) {
+      localStorage.removeItem('adminSesion');
+      localStorage.removeItem('adminLastActive');
+      return null;
+    }
+    return token;
+  });
   const [loginUser, setLoginUser] = useState("");
   const [loginPass, setLoginPass] = useState("");
   const [loginError, setLoginError] = useState("");
@@ -138,6 +148,7 @@ export default function AdminDashboard() {
       const data = await res.json();
       if (res.ok) {
         localStorage.setItem('adminSesion', data.token);
+        localStorage.setItem('adminLastActive', Date.now().toString());
         setAdminToken(data.token);
       } else {
         setLoginError(data.error || "Credenciales incorrectas");
@@ -151,12 +162,54 @@ export default function AdminDashboard() {
   // Logout del Administrador
   const handleLogout = () => {
     localStorage.removeItem('adminSesion');
+    localStorage.removeItem('adminLastActive');
     setAdminToken(null);
     setLoginUser("");
     setLoginPass("");
     // Limpiar hash de la URL para regresar a la página principal
     window.location.hash = "";
   };
+
+  // Lógica de inactividad (Timeout de sesión)
+  useEffect(() => {
+    if (!adminToken) return;
+
+    const INACTIVITY_TIMEOUT = 15 * 60 * 1000; // 15 minutos
+
+    const resetTimer = () => {
+      localStorage.setItem('adminLastActive', Date.now().toString());
+    };
+
+    // Eventos que reinician el contador
+    const events = ['mousemove', 'mousedown', 'keypress', 'scroll', 'touchstart'];
+    const handleActivity = () => {
+      resetTimer();
+    };
+
+    events.forEach(event => {
+      window.addEventListener(event, handleActivity);
+    });
+
+    // Iniciar con la marca de tiempo actual
+    resetTimer();
+
+    // Intervalo de revisión cada 5 segundos
+    const checkInterval = setInterval(() => {
+      const lastActive = localStorage.getItem('adminLastActive');
+      if (lastActive && Date.now() - parseInt(lastActive) > INACTIVITY_TIMEOUT) {
+        clearInterval(checkInterval);
+        handleLogout();
+        alert("Tu sesión ha expirado debido a inactividad.");
+      }
+    }, 5000);
+
+    return () => {
+      events.forEach(event => {
+        window.removeEventListener(event, handleActivity);
+      });
+      clearInterval(checkInterval);
+    };
+  }, [adminToken]);
 
   // Configurar nuevo mes
   const guardarConfig = async (e) => {

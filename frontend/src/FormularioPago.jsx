@@ -5,6 +5,13 @@ export default function FormularioPago() {
   // Estados del Profesor e Inicio de Sesión
   const [profesor, setProfesor] = useState(() => {
     const saved = localStorage.getItem('profesorSesion');
+    const lastActive = localStorage.getItem('profesorLastActive');
+    const INACTIVITY_TIMEOUT = 15 * 60 * 1000; // 15 minutos
+    if (saved && lastActive && Date.now() - parseInt(lastActive) > INACTIVITY_TIMEOUT) {
+      localStorage.removeItem('profesorSesion');
+      localStorage.removeItem('profesorLastActive');
+      return null;
+    }
     return saved ? JSON.parse(saved) : null;
   });
   const [cedulaInput, setCedulaInput] = useState("");
@@ -20,6 +27,7 @@ export default function FormularioPago() {
   const [image, setImage] = useState(null);
   const [preview, setPreview] = useState(null);
   const [mensajeEnvio, setMensajeEnvio] = useState("");
+  const [subiendo, setSubiendo] = useState(false);
 
   const cargarDatosProfesor = React.useCallback(() => {
     if (!profesor) return;
@@ -60,6 +68,7 @@ export default function FormularioPago() {
       const data = await res.json();
       if (res.ok) {
         localStorage.setItem('profesorSesion', JSON.stringify(data.profesor));
+        localStorage.setItem('profesorLastActive', Date.now().toString());
         setProfesor(data.profesor);
       } else {
         setLoginError(data.error || "Error al verificar la cédula");
@@ -72,6 +81,7 @@ export default function FormularioPago() {
 
   const handleLogout = () => {
     localStorage.removeItem('profesorSesion');
+    localStorage.removeItem('profesorLastActive');
     setProfesor(null);
     setCedulaInput("");
     setHistorial([]);
@@ -81,6 +91,47 @@ export default function FormularioPago() {
     setPreview(null);
     setMensajeEnvio("");
   };
+
+  // Lógica de inactividad (Timeout de sesión)
+  useEffect(() => {
+    if (!profesor) return;
+
+    const INACTIVITY_TIMEOUT = 15 * 60 * 1000; // 15 minutos
+
+    const resetTimer = () => {
+      localStorage.setItem('profesorLastActive', Date.now().toString());
+    };
+
+    // Eventos que reinician el contador
+    const events = ['mousemove', 'mousedown', 'keypress', 'scroll', 'touchstart'];
+    const handleActivity = () => {
+      resetTimer();
+    };
+
+    events.forEach(event => {
+      window.addEventListener(event, handleActivity);
+    });
+
+    // Iniciar con la marca de tiempo actual
+    resetTimer();
+
+    // Intervalo de revisión cada 5 segundos
+    const checkInterval = setInterval(() => {
+      const lastActive = localStorage.getItem('profesorLastActive');
+      if (lastActive && Date.now() - parseInt(lastActive) > INACTIVITY_TIMEOUT) {
+        clearInterval(checkInterval);
+        handleLogout();
+        alert("Tu sesión ha expirado debido a inactividad.");
+      }
+    }, 5000);
+
+    return () => {
+      events.forEach(event => {
+        window.removeEventListener(event, handleActivity);
+      });
+      clearInterval(checkInterval);
+    };
+  }, [profesor]);
 
   // Procesamiento de Imagen (Pegado y Carga)
   const procesarImagen = (blob) => {
@@ -124,7 +175,10 @@ export default function FormularioPago() {
   };
 
   const enviarPago = async () => {
-    if (!image || !mesActivo) return;
+    if (!image || !mesActivo || subiendo) return;
+
+    setSubiendo(true);
+    setMensajeEnvio("");
 
     const formData = new FormData();
     formData.append('comprobante', image);
@@ -150,6 +204,8 @@ export default function FormularioPago() {
     } catch (err) {
       console.error(err);
       setMensajeEnvio("Error de conexión al subir el comprobante");
+    } finally {
+      setSubiendo(false);
     }
   };
 
@@ -364,9 +420,10 @@ export default function FormularioPago() {
                   {image && (
                     <button
                       onClick={enviarPago}
-                      className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-black py-4 rounded-2xl shadow-xl shadow-indigo-150 transition-all hover:-translate-y-0.5 active:scale-95 text-center block"
+                      disabled={subiendo}
+                      className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white font-black py-4 rounded-2xl shadow-xl shadow-indigo-150 transition-all hover:-translate-y-0.5 active:scale-95 text-center block disabled:cursor-not-allowed"
                     >
-                      REGISTRAR PAGO AHORA
+                      {subiendo ? "REGISTRANDO PAGO..." : "REGISTRAR PAGO AHORA"}
                     </button>
                   )}
 

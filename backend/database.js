@@ -1,4 +1,4 @@
-require('dotenv').config();
+require('dotenv').config({ path: require('path').join(__dirname, '.env') });
 const crypto = require('crypto');
 
 // Función para obtener hash SHA-256 (necesaria para sembrar el admin)
