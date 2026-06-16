@@ -126,7 +126,7 @@ app.get('/api/profesores/:id/historial', (req, res) => {
             if (mesActivo) {
                 // 1. Calcular deuda pasada
                 const queryDeuda = `
-                    SELECT m.id, m.precio_base, COALESCE(d.descuento, 0) as dcto
+                    SELECT m.id, m.precio_base, COALESCE(d.descuento, 0) as dcto, COALESCE(d.recargo, 0) as rcgo
                     FROM meses_config m
                     JOIN profesores p ON p.id = ?
                     LEFT JOIN descuentos_mes d ON d.mes_id = m.id AND d.profesor_id = p.id
@@ -141,15 +141,18 @@ app.get('/api/profesores/:id/historial', (req, res) => {
                     
                     let totalDeuda = 0;
                     deudas.forEach(d => {
-                        totalDeuda += Math.max(0, d.precio_base - d.dcto);
+                        totalDeuda += Math.max(0, d.precio_base - d.dcto + d.rcgo);
                     });
 
                     // 2. Calcular precio del mes actual
-                    db.get("SELECT descuento FROM descuentos_mes WHERE mes_id = ? AND profesor_id = ?", [mesActivo.id, profesorId], (err, descRow) => {
+                    db.get("SELECT descuento, recargo, motivo_descuento, motivo_recargo FROM descuentos_mes WHERE mes_id = ? AND profesor_id = ?", [mesActivo.id, profesorId], (err, descRow) => {
                         if (err) return res.status(500).json({ error: err.message });
                         
                         const descuentoAplicable = descRow ? descRow.descuento : 0;
-                        const precioMesActual = Math.max(0, mesActivo.precio_base - descuentoAplicable);
+                        const recargoAplicable = descRow ? (descRow.recargo || 0) : 0;
+                        const motivoDesc = descRow ? (descRow.motivo_descuento || '') : '';
+                        const motivoRec = descRow ? (descRow.motivo_recargo || '') : '';
+                        const precioMesActual = Math.max(0, mesActivo.precio_base - descuentoAplicable + recargoAplicable);
                         const precioFinal = precioMesActual + totalDeuda;
                         
                         // 3. Estado del pago actual
@@ -163,7 +166,10 @@ app.get('/api/profesores/:id/historial', (req, res) => {
                                     precioFinal, // Cuota actual + deuda
                                     precioMesActual, // Solo cuota actual
                                     deudaPasada: totalDeuda,
-                                    descuentoAplicado: descuentoAplicable
+                                    descuentoAplicado: descuentoAplicable,
+                                    recargoAplicado: recargoAplicable,
+                                    motivoDescuento: motivoDesc,
+                                    motivoRecargo: motivoRec
                                 },
                                 pagoActual
                             });
@@ -214,7 +220,7 @@ app.post('/api/pagos', upload.single('comprobante'), (req, res) => {
 
 // --- RUTAS DE ADMINISTRACIÓN (Protegidas con adminAuth) ---
 
-// 5. Configurar el mes
+// 5. Configurar el mes (Activar nuevo periodo)
 app.post('/api/admin/config-mes', adminAuth, (req, res) => {
     const { mes_nombre, precio_base, descuento } = req.body;
 
@@ -233,10 +239,27 @@ app.post('/api/admin/config-mes', adminAuth, (req, res) => {
     });
 });
 
+// 5b. Actualizar datos del periodo activo actual
+app.put('/api/admin/config-mes', adminAuth, (req, res) => {
+    const { mes_nombre, precio_base, descuento } = req.body;
+
+    db.run(
+        "UPDATE meses_config SET mes_nombre = ?, precio_base = ?, descuento = ? WHERE activo = 1",
+        [mes_nombre, precio_base, descuento || 0],
+        function(err) {
+            if (err) return res.status(500).json({ error: err.message });
+            if (this.changes === 0) {
+                return res.status(404).json({ error: "No hay ningún periodo activo que actualizar" });
+            }
+            res.json({ success: true, mensaje: "Periodo activo actualizado con éxito." });
+        }
+    );
+});
+
 // 6b. Gestionar descuentos específicos del mes activo
 app.get('/api/admin/descuentos', adminAuth, (req, res) => {
     const query = `
-        SELECT d.id, d.descuento, p.nombre, p.cedula, p.id as profesor_id
+        SELECT d.id, d.descuento, d.recargo, d.motivo_descuento, d.motivo_recargo, p.nombre, p.cedula, p.id as profesor_id
         FROM descuentos_mes d
         JOIN profesores p ON d.profesor_id = p.id
         WHERE d.mes_id = (SELECT id FROM meses_config WHERE activo = 1)
@@ -248,17 +271,26 @@ app.get('/api/admin/descuentos', adminAuth, (req, res) => {
 });
 
 app.post('/api/admin/descuentos', adminAuth, (req, res) => {
-    const { profesor_id, descuento } = req.body;
+    const { profesor_id, descuento, recargo, motivo_descuento, motivo_recargo } = req.body;
+    const valDescuento = descuento !== undefined ? parseFloat(descuento) : 0;
+    const valRecargo = recargo !== undefined ? parseFloat(recargo) : 0;
+    const valMotivoDesc = motivo_descuento !== undefined ? motivo_descuento.toString() : '';
+    const valMotivoRec = motivo_recargo !== undefined ? motivo_recargo.toString() : '';
+    
     db.get("SELECT id FROM meses_config WHERE activo = 1", (err, row) => {
         if (err || !row) return res.status(500).json({ error: err ? err.message : "No hay mes activo" });
         
         const query = `
-            INSERT INTO descuentos_mes (mes_id, profesor_id, descuento) 
-            VALUES (?, ?, ?) 
+            INSERT INTO descuentos_mes (mes_id, profesor_id, descuento, recargo, motivo_descuento, motivo_recargo) 
+            VALUES (?, ?, ?, ?, ?, ?) 
             ON CONFLICT(mes_id, profesor_id) 
-            DO UPDATE SET descuento = excluded.descuento`;
+            DO UPDATE SET 
+                descuento = excluded.descuento, 
+                recargo = excluded.recargo, 
+                motivo_descuento = excluded.motivo_descuento, 
+                motivo_recargo = excluded.motivo_recargo`;
             
-        db.run(query, [row.id, profesor_id, descuento], function(err) {
+        db.run(query, [row.id, profesor_id, valDescuento, valRecargo, valMotivoDesc, valMotivoRec], function(err) {
             if (err) return res.status(500).json({ error: err.message });
             res.json({ success: true });
         });
@@ -362,6 +394,9 @@ app.get('/api/admin/historial-general', adminAuth, (req, res) => {
             m.mes_nombre,
             m.precio_base,
             COALESCE(d.descuento, 0) as descuento_aplicado,
+            COALESCE(d.recargo, 0) as recargo_aplicado,
+            COALESCE(d.motivo_descuento, '') as motivo_descuento,
+            COALESCE(d.motivo_recargo, '') as motivo_recargo,
             pag.monto_pagado as precio_final_pagado,
             pag.estado,
             pag.fecha_registro,

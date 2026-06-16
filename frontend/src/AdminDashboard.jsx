@@ -37,10 +37,13 @@ export default function AdminDashboard() {
   const [searchProfesores, setSearchProfesores] = useState('');
   const [searchHistorial, setSearchHistorial] = useState('');
   
-  // Búsqueda de docentes para descuento
+  // Búsqueda de docentes para descuento / recargo
   const [busquedaDocente, setBusquedaDocente] = useState("");
   const [docenteSeleccionado, setDocenteSeleccionado] = useState(null);
   const [montoDescuento, setMontoDescuento] = useState("");
+  const [montoRecargo, setMontoRecargo] = useState("");
+  const [motivoDesc, setMotivoDesc] = useState("");
+  const [motivoRec, setMotivoRec] = useState("");
   
   // Modales
   const [fotoModal, setFotoModal] = useState(null);
@@ -211,9 +214,15 @@ export default function AdminDashboard() {
     };
   }, [adminToken]);
 
-  // Configurar nuevo mes
+  // Configurar nuevo mes (Activar nuevo periodo)
   const guardarConfig = async (e) => {
-    e.preventDefault();
+    if (e && e.preventDefault) e.preventDefault();
+    if (!config.mes_nombre || !config.precio_base) {
+      alert("Por favor complete todos los campos obligatorios del periodo.");
+      return;
+    }
+    if (!window.confirm("⚠️ ¿Seguro que deseas ACTIVAR UN NUEVO PERIODO?\n\nEsto desactivará el periodo actual y registrará como deuda las cuotas pendientes de todos los profesores que no hayan pagado aún.")) return;
+    
     try {
       const res = await fetch(`${API_URL}/api/admin/config-mes`, {
         method: 'POST',
@@ -231,23 +240,67 @@ export default function AdminDashboard() {
     }
   };
 
-  // Aplicar descuento a un profesor
+  // Actualizar datos del periodo activo actual sin desactivar ni generar deudas
+  const actualizarConfig = async (e) => {
+    if (e && e.preventDefault) e.preventDefault();
+    if (!config.mes_nombre || !config.precio_base) {
+      alert("Por favor complete todos los campos obligatorios del periodo.");
+      return;
+    }
+    if (!mesActual) {
+      alert("No hay ningún periodo activo para actualizar.");
+      return;
+    }
+    if (!window.confirm(`¿Seguro que deseas ACTUALIZAR los datos del periodo activo actual ("${mesActual.mes_nombre}")?\n\nEsta acción modificará los valores existentes para todos sin alterar deudas o cerrar periodos.`)) return;
+
+    try {
+      const res = await fetch(`${API_URL}/api/admin/config-mes`, {
+        method: 'PUT',
+        headers: getHeaders(),
+        body: JSON.stringify(config)
+      });
+      if (res.ok) {
+        alert("Periodo activo actualizado exitosamente.");
+        cargarTodo();
+      } else {
+        const data = await res.json();
+        alert(`Error al actualizar: ${data.error || 'error desconocido'}`);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  // Aplicar descuento / recargo a un profesor
   const aplicarDescuento = async (e) => {
     e.preventDefault();
-    if (!docenteSeleccionado || !montoDescuento) return;
+    if (!docenteSeleccionado) return;
+    if (!montoDescuento && !montoRecargo) {
+      alert("Por favor ingrese al menos un descuento o un recargo.");
+      return;
+    }
     try {
       const res = await fetch(`${API_URL}/api/admin/descuentos`, {
         method: 'POST',
         headers: getHeaders(),
-        body: JSON.stringify({ profesor_id: docenteSeleccionado.id, descuento: parseFloat(montoDescuento) })
+        body: JSON.stringify({ 
+          profesor_id: docenteSeleccionado.id, 
+          descuento: parseFloat(montoDescuento) || 0,
+          recargo: parseFloat(montoRecargo) || 0,
+          motivo_descuento: motivoDesc,
+          motivo_recargo: motivoRec
+        })
       });
       if (res.ok) {
         setDocenteSeleccionado(null);
         setMontoDescuento("");
+        setMontoRecargo("");
+        setMotivoDesc("");
+        setMotivoRec("");
         setBusquedaDocente("");
         cargarTodo();
       } else {
-        alert("Error al aplicar descuento.");
+        alert("Error al aplicar los ajustes de cuota.");
       }
     } catch (err) {
       console.error(err);
@@ -534,7 +587,7 @@ export default function AdminDashboard() {
               <h3 className="text-lg font-black text-gray-800 mb-6 flex items-center">
                 <span className="mr-2">⚙️</span> Configurar Periodo de Cobro
               </h3>
-              <form onSubmit={guardarConfig} className="space-y-4">
+              <form onSubmit={e => e.preventDefault()} className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Nombre del Periodo</label>
@@ -559,18 +612,31 @@ export default function AdminDashboard() {
                     />
                   </div>
                 </div>
-                <button className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-3.5 rounded-xl font-bold transition shadow-lg shadow-indigo-150 text-sm">
-                  Activar / Actualizar Periodo
-                </button>
+                <div className="flex flex-col sm:flex-row gap-3 pt-2">
+                  <button 
+                    type="button" 
+                    onClick={actualizarConfig}
+                    className="flex-1 bg-slate-800 hover:bg-slate-700 text-white py-3.5 rounded-xl font-bold transition shadow-md text-xs active:scale-95"
+                  >
+                    ✍️ Actualizar Periodo Activo
+                  </button>
+                  <button 
+                    type="button" 
+                    onClick={guardarConfig}
+                    className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white py-3.5 rounded-xl font-bold transition shadow-md text-xs active:scale-95"
+                  >
+                    🆕 Activar Nuevo Periodo
+                  </button>
+                </div>
               </form>
             </section>
 
             {/* Nueva Sección de Descuentos Especiales / Ajustes */}
             <section className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
               <h3 className="text-lg font-black text-rose-600 mb-4 flex items-center">
-                <span className="mr-2">🎁</span> Ajuste de Cuota a Favor
+                <span className="mr-2">🎁</span> Ajustes Especiales de Cuota (Descuentos / Recargos)
               </h3>
-              <p className="text-xs text-gray-500 mb-4">Aplica un descuento especial o perdón de deudas pasadas a un docente en este mes activo.</p>
+              <p className="text-xs text-gray-500 mb-4">Aplica un descuento (a favor) o un recargo (monto adicional) a la cuota de un docente para el periodo activo.</p>
               
               <div className="space-y-4 bg-rose-50/30 p-4 rounded-2xl border border-rose-100">
                  {/* Buscador */}
@@ -602,40 +668,75 @@ export default function AdminDashboard() {
                        )}
                     </div>
                  )}
-
-                 {/* Formulario de Docente Seleccionado */}
                  {docenteSeleccionado && (
-                    <form onSubmit={aplicarDescuento} className="flex flex-col gap-3 p-4 bg-white border border-rose-200 rounded-xl shadow-sm">
+                    <form onSubmit={aplicarDescuento} className="flex flex-col gap-4 p-4 bg-white border border-rose-200 rounded-xl shadow-sm">
                        <div className="flex justify-between items-center">
                           <span className="text-sm font-bold text-rose-900">{docenteSeleccionado.nombre}</span>
-                          <button type="button" onClick={() => setDocenteSeleccionado(null)} className="text-xs font-bold text-gray-400 hover:text-rose-500">✕ Cancelar</button>
+                          <button type="button" onClick={() => { setDocenteSeleccionado(null); setMontoDescuento(""); setMontoRecargo(""); setMotivoDesc(""); setMotivoRec(""); }} className="text-xs font-bold text-gray-400 hover:text-rose-500">✕ Cancelar</button>
                        </div>
-                       <div className="flex gap-2">
-                          <div className="relative flex-1">
-                            <span className="absolute left-3 top-2.5 text-gray-500 font-bold">$</span>
-                            <input 
-                              type="number" 
-                              step="0.01" 
-                              placeholder="Descuento" 
-                              required 
-                              value={montoDescuento} 
-                              onChange={e => setMontoDescuento(e.target.value)} 
-                              className="w-full pl-7 p-2.5 border border-gray-200 rounded-lg text-sm font-bold text-rose-600 outline-none focus:border-rose-300" 
-                            />
+                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="space-y-2 p-3 bg-emerald-50/20 border border-emerald-100 rounded-xl">
+                            <label className="block text-[10px] font-bold text-emerald-800 uppercase tracking-wide">Descuento (Restar)</label>
+                            <div className="relative">
+                              <span className="absolute left-2.5 top-2 text-gray-500 font-bold text-xs">$</span>
+                              <input 
+                                type="number" 
+                                step="0.01" 
+                                placeholder="0.00" 
+                                value={montoDescuento} 
+                                onChange={e => setMontoDescuento(e.target.value)} 
+                                className="w-full pl-6 p-1.5 border border-gray-200 rounded-lg text-xs font-bold text-emerald-600 outline-none focus:border-emerald-300" 
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[9px] font-bold text-gray-400 mb-0.5">Motivo del Descuento</label>
+                              <input 
+                                type="text" 
+                                placeholder="Ej: Beca, Convenio..." 
+                                value={motivoDesc} 
+                                onChange={e => setMotivoDesc(e.target.value)} 
+                                className="w-full p-1.5 border border-gray-200 rounded-lg text-xs outline-none focus:border-emerald-300 text-gray-700" 
+                              />
+                            </div>
                           </div>
-                          <button type="submit" className="bg-rose-500 hover:bg-rose-600 text-white px-5 py-2.5 rounded-lg text-sm font-bold shadow-md shadow-rose-200 transition">
-                            Aplicar
-                          </button>
+                          
+                          <div className="space-y-2 p-3 bg-amber-50/20 border border-amber-100 rounded-xl">
+                            <label className="block text-[10px] font-bold text-amber-800 uppercase tracking-wide">Recargo (Sumar)</label>
+                            <div className="relative">
+                              <span className="absolute left-2.5 top-2 text-gray-500 font-bold text-xs">$</span>
+                              <input 
+                                type="number" 
+                                step="0.01" 
+                                placeholder="0.00" 
+                                value={montoRecargo} 
+                                onChange={e => setMontoRecargo(e.target.value)} 
+                                className="w-full pl-6 p-1.5 border border-gray-200 rounded-lg text-xs font-bold text-amber-600 outline-none focus:border-amber-300" 
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[9px] font-bold text-gray-400 mb-0.5">Motivo del Recargo</label>
+                              <input 
+                                type="text" 
+                                placeholder="Ej: Pago atrasado, Mora..." 
+                                value={motivoRec} 
+                                onChange={e => setMotivoRec(e.target.value)} 
+                                className="w-full p-1.5 border border-gray-200 rounded-lg text-xs outline-none focus:border-amber-300 text-gray-700" 
+                              />
+                            </div>
+                          </div>
                        </div>
+                       <button type="submit" className="w-full bg-rose-500 hover:bg-rose-650 text-white py-2.5 rounded-lg text-xs font-bold shadow-md shadow-rose-200 transition">
+                         Aplicar Ajustes
+                       </button>
                     </form>
                  )}
               </div>
 
-              {/* Lista de Descuentos Activos */}
+              {/* Lista de Ajustes Especiales */}
               <div className="mt-6">
-                 <h4 className="text-xs font-bold text-gray-400 uppercase mb-3">Docentes con descuento</h4>
+                 <h4 className="text-xs font-bold text-gray-400 uppercase mb-3">Ajustes activos de cuota</h4>
                  {descuentos.length === 0 ? (
-                    <p className="text-xs text-gray-400 italic bg-gray-50 p-3 rounded-lg border border-gray-100 text-center">Nadie tiene descuentos en este periodo.</p>
+                    <p className="text-xs text-gray-400 italic bg-gray-50 p-3 rounded-lg border border-gray-100 text-center">Nadie tiene ajustes aplicados en este periodo.</p>
                  ) : (
                     <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
                        {descuentos.map(d => (
@@ -643,10 +744,31 @@ export default function AdminDashboard() {
                              <div>
                                 <span className="font-bold text-gray-700">{d.nombre}</span>
                                 <span className="text-xs text-gray-400 font-mono ml-2 hidden sm:inline-block">C.I. {d.cedula}</span>
+                                {d.motivo_descuento && (
+                                   <div className="text-[10px] text-emerald-600 italic mt-0.5">
+                                      Motivo Descuento: {d.motivo_descuento}
+                                   </div>
+                                )}
+                                {d.motivo_recargo && (
+                                   <div className="text-[10px] text-amber-600 italic mt-0.5">
+                                      Motivo Recargo: {d.motivo_recargo}
+                                   </div>
+                                )}
                              </div>
                              <div className="flex items-center space-x-3">
-                                <span className="text-rose-600 font-black bg-rose-100 px-2 py-0.5 rounded-md">-${d.descuento.toFixed(2)}</span>
-                                <button onClick={() => eliminarDescuento(d.id)} className="text-rose-500 hover:text-white hover:bg-rose-500 p-1 rounded-md transition" title="Quitar descuento">
+                                <div className="flex flex-col items-end space-y-0.5">
+                                   {d.descuento > 0 && (
+                                      <span className="text-emerald-600 text-[11px] font-black bg-emerald-100/70 px-2 py-0.5 rounded-md">
+                                         Descuento: -${d.descuento.toFixed(2)}
+                                      </span>
+                                   )}
+                                   {d.recargo > 0 && (
+                                      <span className="text-amber-600 text-[11px] font-black bg-amber-100/70 px-2 py-0.5 rounded-md">
+                                         Recargo: +${d.recargo.toFixed(2)}
+                                      </span>
+                                   )}
+                                </div>
+                                <button onClick={() => eliminarDescuento(d.id)} className="text-rose-500 hover:text-white hover:bg-rose-500 p-1 rounded-md transition" title="Quitar ajustes">
                                   🗑️
                                 </button>
                              </div>
@@ -993,7 +1115,7 @@ export default function AdminDashboard() {
                 <tr className="bg-gray-50 text-gray-500 text-xs uppercase font-bold">
                   <th className="p-4 rounded-l-2xl">Profesor / Mes</th>
                   <th className="p-4">Costo Base</th>
-                  <th className="p-4">Descuento</th>
+                  <th className="p-4">Ajustes (Desc. / Rec.)</th>
                   <th className="p-4">Pago Final</th>
                   <th className="p-4 text-center">Estado</th>
                   <th className="p-4 text-right rounded-r-2xl">Recibo</th>
@@ -1009,7 +1131,25 @@ export default function AdminDashboard() {
                       <div className="text-xs text-gray-400 mt-1">{h.mes_nombre}</div>
                     </td>
                     <td className="p-4 font-mono font-bold text-gray-500">${h.precio_base?.toFixed(2)}</td>
-                    <td className="p-4 font-mono font-bold text-rose-500">-${h.descuento_aplicado?.toFixed(2)}</td>
+                    <td className="p-4 text-xs font-mono font-bold">
+                      <div className="flex flex-col space-y-0.5">
+                        {h.descuento_aplicado > 0 && (
+                          <span className="text-rose-500">
+                            Desc: -${h.descuento_aplicado.toFixed(2)}
+                            {h.motivo_descuento && <span className="text-[10px] text-gray-400 font-normal italic block">({h.motivo_descuento})</span>}
+                          </span>
+                        )}
+                        {h.recargo_aplicado > 0 && (
+                          <span className="text-amber-600 font-extrabold mt-1">
+                            Rec: +${h.recargo_aplicado.toFixed(2)}
+                            {h.motivo_recargo && <span className="text-[10px] text-gray-400 font-normal italic block">({h.motivo_recargo})</span>}
+                          </span>
+                        )}
+                        {h.descuento_aplicado === 0 && h.recargo_aplicado === 0 && (
+                          <span className="text-gray-400">-</span>
+                        )}
+                      </div>
+                    </td>
                     <td className="p-4 font-mono font-bold text-emerald-600">${h.precio_final_pagado?.toFixed(2)}</td>
                     <td className="p-4 text-center">
                       <span className={`inline-block px-2.5 py-1 text-[10px] font-bold rounded-full ${h.estado === 'aprobado' ? 'bg-emerald-50 text-emerald-700' : h.estado === 'rechazado' ? 'bg-rose-50 text-rose-700' : 'bg-amber-50 text-amber-700'}`}>

@@ -302,8 +302,19 @@ export default function FormularioPago() {
 
                       {mesActivo.descuentoAplicado > 0 && (
                         <div className="flex justify-between items-center">
-                          <span className="text-[10px] text-emerald-600 font-bold uppercase tracking-wide">Descuento aplicado al mes actual:</span>
+                          <span className="text-[10px] text-emerald-600 font-bold uppercase tracking-wide">
+                            Descuento aplicado al mes actual{mesActivo.motivoDescuento ? ` (${mesActivo.motivoDescuento})` : ''}:
+                          </span>
                           <span className="text-xs text-emerald-600 font-black">-${mesActivo.descuentoAplicado.toFixed(2)}</span>
+                        </div>
+                      )}
+
+                      {mesActivo.recargoAplicado > 0 && (
+                        <div className="flex justify-between items-center">
+                          <span className="text-[10px] text-amber-600 font-bold uppercase tracking-wide">
+                            Monto adicional / Recargo{mesActivo.motivoRecargo ? ` (${mesActivo.motivoRecargo})` : ''}:
+                          </span>
+                          <span className="text-xs text-amber-600 font-black">+${mesActivo.recargoAplicado.toFixed(2)}</span>
                         </div>
                       )}
 

@@ -174,6 +174,10 @@ if (isRunningServer || process.env.FORCE_INIT_DB) {
             crearTablasYSembrar();
             db.run("ALTER TABLE profesores ADD COLUMN IF NOT EXISTS mes_ingreso_id INTEGER DEFAULT 1");
             db.run("ALTER TABLE profesores ADD COLUMN IF NOT EXISTS celular TEXT DEFAULT ''");
+            db.run("ALTER TABLE descuentos_mes ADD COLUMN IF NOT EXISTS recargo REAL DEFAULT 0");
+            db.run("ALTER TABLE descuentos_mes ADD COLUMN IF NOT EXISTS motivo TEXT DEFAULT ''");
+            db.run("ALTER TABLE descuentos_mes ADD COLUMN IF NOT EXISTS motivo_descuento TEXT DEFAULT ''");
+            db.run("ALTER TABLE descuentos_mes ADD COLUMN IF NOT EXISTS motivo_recargo TEXT DEFAULT ''");
         } else {
             // SQLite original
             db.all("PRAGMA table_info(profesores)", (err, columns) => {
@@ -198,6 +202,26 @@ if (isRunningServer || process.env.FORCE_INIT_DB) {
                         db.run("ALTER TABLE profesores ADD COLUMN celular TEXT DEFAULT ''");
                     }
                     crearTablasYSembrar();
+                    // Verificar si existen las columnas recargo y motivos en descuentos_mes
+                    db.all("PRAGMA table_info(descuentos_mes)", (err, cols) => {
+                        if (err) return;
+                        const hasRecargo = cols && cols.some(col => col.name === 'recargo');
+                        const hasMotivo = cols && cols.some(col => col.name === 'motivo');
+                        const hasMotivoDescuento = cols && cols.some(col => col.name === 'motivo_descuento');
+                        const hasMotivoRecargo = cols && cols.some(col => col.name === 'motivo_recargo');
+                        if (cols && cols.length > 0 && !hasRecargo) {
+                            db.run("ALTER TABLE descuentos_mes ADD COLUMN recargo REAL DEFAULT 0");
+                        }
+                        if (cols && cols.length > 0 && !hasMotivo) {
+                            db.run("ALTER TABLE descuentos_mes ADD COLUMN motivo TEXT DEFAULT ''");
+                        }
+                        if (cols && cols.length > 0 && !hasMotivoDescuento) {
+                            db.run("ALTER TABLE descuentos_mes ADD COLUMN motivo_descuento TEXT DEFAULT ''");
+                        }
+                        if (cols && cols.length > 0 && !hasMotivoRecargo) {
+                            db.run("ALTER TABLE descuentos_mes ADD COLUMN motivo_recargo TEXT DEFAULT ''");
+                        }
+                    });
                 }
             });
         }
@@ -232,6 +256,10 @@ function crearTablasYSembrar() {
             mes_id INTEGER,
             profesor_id INTEGER,
             descuento REAL NOT NULL,
+            recargo REAL DEFAULT 0,
+            motivo TEXT DEFAULT '',
+            motivo_descuento TEXT DEFAULT '',
+            motivo_recargo TEXT DEFAULT '',
             FOREIGN KEY(mes_id) REFERENCES meses_config(id),
             FOREIGN KEY(profesor_id) REFERENCES profesores(id),
             UNIQUE(mes_id, profesor_id)
