@@ -349,69 +349,69 @@ export default function FormularioPago() {
                   <div className="space-y-4">
                     <span className="block text-xs font-bold text-gray-400 uppercase tracking-wider">Estado del pago</span>
                     {pagoActual ? (
-                        <div>
-                          {pagoActual.estado === 'pendiente' && (
-                            <div className="p-5 bg-amber-50/60 backdrop-blur-sm border border-amber-100/60 rounded-2xl text-amber-900 text-center font-bold flex flex-col items-center shadow-sm animate-fade-in-up">
-                              <span className="text-3xl mb-2 animate-pulse">⏳</span>
-                              <span className="text-base font-black">Comprobante Registrado</span>
-                              <span className="text-xs font-semibold text-amber-700/80 mt-1.5 max-w-xs">
-                                Tu pago está en revisión administrativa. Te notificaremos cuando sea aprobado.
-                              </span>
-                            </div>
-                          )}
-                          {pagoActual.estado === 'aprobado' && (
-                            <div className="p-5 bg-emerald-50/60 backdrop-blur-sm border border-emerald-100/60 rounded-2xl text-emerald-900 text-center font-bold flex flex-col items-center shadow-sm animate-fade-in-up">
-                              <span className="text-3xl mb-2 animate-bounce">✅</span>
-                              <span className="text-base font-black">Pago Aprobado con Éxito</span>
-                              <span className="text-xs font-semibold text-emerald-700/80 mt-1.5 max-w-xs">
-                                ¡Gracias! Estás al día con el servicio de Internet.
-                              </span>
-                            </div>
-                          )}
-                          {pagoActual.estado === 'rechazado' && (
-                            <div className="p-5 bg-rose-50/60 backdrop-blur-sm border border-rose-100/60 rounded-2xl text-rose-900 text-center font-bold flex flex-col items-center shadow-sm animate-fade-in-up">
-                              <span className="text-3xl mb-2">❌</span>
-                              <span className="text-base font-black">Comprobante Rechazado</span>
-                              <span className="text-xs font-semibold text-rose-700/80 mt-1.5 max-w-xs mb-3">
-                                El comprobante subido no pudo ser validado por la administración.
-                              </span>
-                              {mesActivo.abierto === 1 && !reintentando && (
-                                <button
-                                  onClick={() => setReintentando(true)}
-                                  className="mt-2 w-full bg-rose-600 hover:bg-rose-700 text-white font-black py-3 px-4 rounded-xl text-xs shadow-md shadow-rose-500/10 hover:shadow-rose-500/20 transition-all duration-300 ease-out hover:-translate-y-0.5 active:scale-95"
-                                >
-                                  Volver a intentar 🔄
-                                </button>
-                              )}
-                              {mesActivo.abierto === 1 && reintentando && (
-                                <p className="mt-3 text-xs text-rose-800 italic bg-white/80 border border-rose-200/60 px-3 py-2 rounded-xl">
-                                  Por favor, sube tu nuevo comprobante en la sección de la derecha.
-                                </p>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      ) : (
-                        <div>
-                          {mesActivo.abierto === 1 ? (
-                            <div className="p-5 bg-slate-50/60 backdrop-blur-sm border border-slate-100/60 rounded-2xl text-slate-700 text-center font-semibold shadow-sm animate-fade-in-up">
-                              <span className="text-3xl mb-2 block">🔔</span>
-                              <span className="text-slate-800 font-black block text-base">Pendiente de Registro</span>
-                              <span className="block text-xs text-slate-500 mt-1.5 max-w-xs mx-auto">
-                                Realiza tu transferencia usando los accesos rápidos de arriba y luego sube tu comprobante para registrar tu pago.
-                              </span>
-                            </div>
-                          ) : (
-                            <div className="p-5 bg-red-50/60 backdrop-blur-sm border border-red-100/60 rounded-2xl text-red-900 text-center font-bold flex flex-col items-center shadow-sm animate-fade-in-up">
-                              <span className="text-3xl mb-2">🔒</span>
-                              <span className="text-base font-black">Periodo Cerrado</span>
-                              <span className="text-xs font-semibold text-red-700/80 mt-1.5 max-w-xs">
-                                La recepción de comprobantes está deshabilitada temporalmente en este momento.
-                              </span>
-                            </div>
-                          )}
-                        </div>
-                      )}
+                      <div>
+                        {pagoActual.estado === 'pendiente' && (
+                          <div className="p-5 bg-amber-50/60 backdrop-blur-sm border border-amber-100/60 rounded-2xl text-amber-900 text-center font-bold flex flex-col items-center shadow-sm animate-fade-in-up">
+                            <span className="text-3xl mb-2 animate-pulse">⏳</span>
+                            <span className="text-base font-black">Comprobante Registrado</span>
+                            <span className="text-xs font-semibold text-amber-700/80 mt-1.5 max-w-xs">
+                              Tu pago está en revisión administrativa. Te notificaremos cuando sea aprobado.
+                            </span>
+                          </div>
+                        )}
+                        {pagoActual.estado === 'aprobado' && (
+                          <div className="p-5 bg-emerald-50/60 backdrop-blur-sm border border-emerald-100/60 rounded-2xl text-emerald-900 text-center font-bold flex flex-col items-center shadow-sm animate-fade-in-up">
+                            <span className="text-3xl mb-2 animate-bounce">✅</span>
+                            <span className="text-base font-black">Pago Aprobado con Éxito</span>
+                            <span className="text-xs font-semibold text-emerald-700/80 mt-1.5 max-w-xs">
+                              ¡Gracias! Estás al día con el servicio de Internet.
+                            </span>
+                          </div>
+                        )}
+                        {pagoActual.estado === 'rechazado' && (
+                          <div className="p-5 bg-rose-50/60 backdrop-blur-sm border border-rose-100/60 rounded-2xl text-rose-900 text-center font-bold flex flex-col items-center shadow-sm animate-fade-in-up">
+                            <span className="text-3xl mb-2">❌</span>
+                            <span className="text-base font-black">Comprobante Rechazado</span>
+                            <span className="text-xs font-semibold text-rose-700/80 mt-1.5 max-w-xs mb-3">
+                              El comprobante subido no pudo ser validado por la administración.
+                            </span>
+                            {mesActivo.abierto === 1 && !reintentando && (
+                              <button
+                                onClick={() => setReintentando(true)}
+                                className="mt-2 w-full bg-rose-600 hover:bg-rose-700 text-white font-black py-3 px-4 rounded-xl text-xs shadow-md shadow-rose-500/10 hover:shadow-rose-500/20 transition-all duration-300 ease-out hover:-translate-y-0.5 active:scale-95"
+                              >
+                                Volver a intentar 🔄
+                              </button>
+                            )}
+                            {mesActivo.abierto === 1 && reintentando && (
+                              <p className="mt-3 text-xs text-rose-800 italic bg-white/80 border border-rose-200/60 px-3 py-2 rounded-xl">
+                                Por favor, sube tu nuevo comprobante en la sección de la derecha.
+                              </p>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div>
+                        {mesActivo.abierto === 1 ? (
+                          <div className="p-5 bg-slate-50/60 backdrop-blur-sm border border-slate-100/60 rounded-2xl text-slate-700 text-center font-semibold shadow-sm animate-fade-in-up">
+                            <span className="text-3xl mb-2 block">🔔</span>
+                            <span className="text-slate-800 font-black block text-base">Pendiente de Registro</span>
+                            <span className="block text-xs text-slate-500 mt-1.5 max-w-xs mx-auto">
+                              Realiza tu transferencia usando los accesos rápidos de arriba y luego sube tu comprobante para registrar tu pago.
+                            </span>
+                          </div>
+                        ) : (
+                          <div className="p-5 bg-red-50/60 backdrop-blur-sm border border-red-100/60 rounded-2xl text-red-900 text-center font-bold flex flex-col items-center shadow-sm animate-fade-in-up">
+                            <span className="text-3xl mb-2">🔒</span>
+                            <span className="text-base font-black">Periodo Cerrado</span>
+                            <span className="text-xs font-semibold text-red-700/80 mt-1.5 max-w-xs">
+                              La recepción de comprobantes está deshabilitada temporalmente en este momento.
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
               ) : (
@@ -583,13 +583,12 @@ export default function FormularioPago() {
       {/* Toast Notification */}
       {notificacion && (
         <div className="fixed bottom-5 right-5 z-50 animate-fade-in-up">
-          <div className={`flex items-center gap-3 p-4 rounded-2xl shadow-2xl border backdrop-blur-md transition-all duration-300 max-w-sm ${
-            notificacion.type === 'error' 
-              ? 'bg-rose-50/95 text-rose-800 border-rose-100/60 shadow-rose-100/50' 
-              : notificacion.type === 'warning'
+          <div className={`flex items-center gap-3 p-4 rounded-2xl shadow-2xl border backdrop-blur-md transition-all duration-300 max-w-sm ${notificacion.type === 'error'
+            ? 'bg-rose-50/95 text-rose-800 border-rose-100/60 shadow-rose-100/50'
+            : notificacion.type === 'warning'
               ? 'bg-amber-50/95 text-amber-800 border-amber-100/60 shadow-amber-100/50'
               : 'bg-emerald-50/95 text-emerald-800 border-emerald-100/60 shadow-emerald-100/50'
-          }`}>
+            }`}>
             <span className="text-xl">
               {notificacion.type === 'error' ? '❌' : notificacion.type === 'warning' ? '⚠️' : '✅'}
             </span>

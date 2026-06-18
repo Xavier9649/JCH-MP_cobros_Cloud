@@ -118,6 +118,10 @@ app.get('/api/profesores/:id/historial', (req, res) => {
         
     db.all(queryPagos, [profesorId], (err, pagos) => {
         if (err) return res.status(500).json({ error: err.message });
+        const parsedPagos = pagos.map(p => ({
+            ...p,
+            monto_pagado: parseFloat(p.monto_pagado) || 0
+        }));
         
         // Obtener el mes activo para verificar si ya pagó este mes
         db.get("SELECT * FROM meses_config WHERE activo = 1", (err, mesActivo) => {
@@ -141,7 +145,7 @@ app.get('/api/profesores/:id/historial', (req, res) => {
                     
                     let totalDeuda = 0;
                     deudas.forEach(d => {
-                        totalDeuda += Math.max(0, d.precio_base - d.dcto + d.rcgo);
+                        totalDeuda += Math.max(0, Number(d.precio_base) - Number(d.dcto) + Number(d.recargo || d.rcgo || 0));
                     });
 
                     // 2. Calcular precio del mes actual
@@ -152,7 +156,7 @@ app.get('/api/profesores/:id/historial', (req, res) => {
                         const recargoAplicable = descRow ? (descRow.recargo || 0) : 0;
                         const motivoDesc = descRow ? (descRow.motivo_descuento || '') : '';
                         const motivoRec = descRow ? (descRow.motivo_recargo || '') : '';
-                        const precioMesActual = Math.max(0, mesActivo.precio_base - descuentoAplicable + recargoAplicable);
+                        const precioMesActual = Math.max(0, Number(mesActivo.precio_base) - Number(descuentoAplicable) + Number(recargoAplicable));
                         const precioFinal = precioMesActual + totalDeuda;
                         
                         // 3. Estado del pago actual
@@ -160,24 +164,29 @@ app.get('/api/profesores/:id/historial', (req, res) => {
                         db.get(queryPagoActual, [profesorId, mesActivo.id], (err, pagoActual) => {
                             if (err) return res.status(500).json({ error: err.message });
                             res.json({
-                                pagos,
+                                pagos: parsedPagos,
                                 mesActivo: {
                                     ...mesActivo,
-                                    precioFinal, // Cuota actual + deuda
-                                    precioMesActual, // Solo cuota actual
-                                    deudaPasada: totalDeuda,
-                                    descuentoAplicado: descuentoAplicable,
-                                    recargoAplicado: recargoAplicable,
+                                    precio_base: parseFloat(mesActivo.precio_base) || 0,
+                                    descuento: parseFloat(mesActivo.descuento) || 0,
+                                    precioFinal: parseFloat(precioFinal) || 0, // Cuota actual + deuda
+                                    precioMesActual: parseFloat(precioMesActual) || 0, // Solo cuota actual
+                                    deudaPasada: parseFloat(totalDeuda) || 0,
+                                    descuentoAplicado: parseFloat(descuentoAplicable) || 0,
+                                    recargoAplicado: parseFloat(recargoAplicable) || 0,
                                     motivoDescuento: motivoDesc,
                                     motivoRecargo: motivoRec
                                 },
-                                pagoActual
+                                pagoActual: pagoActual ? {
+                                    ...pagoActual,
+                                    monto_pagado: parseFloat(pagoActual.monto_pagado) || 0
+                                } : null
                             });
                         });
                     });
                 });
             } else {
-                res.json({ pagos, mesActivo: null, pagoActual: null });
+                res.json({ pagos: parsedPagos, mesActivo: null, pagoActual: null });
             }
         });
     });
@@ -208,9 +217,10 @@ app.post('/api/pagos', upload.single('comprobante'), (req, res) => {
                 return res.status(400).json({ error: "Ya existe un pago registrado (pendiente o aprobado) para este periodo." });
             }
 
+            const montoNumerico = parseFloat(monto) || 0;
             // Insertar pago — comprobante_path ahora es la URL de Cloudinary
             const query = `INSERT INTO pagos (profesor_id, mes_id, monto_pagado, comprobante_path, estado) VALUES (?, ?, ?, ?, 'pendiente')`;
-            db.run(query, [profesor_id, mes_id, monto, comprobante_path], function (err) {
+            db.run(query, [profesor_id, mes_id, montoNumerico, comprobante_path], function (err) {
                 if (err) return res.status(500).json({ error: err.message });
                 res.json({ success: true, id: this.lastID });
             });
@@ -223,6 +233,8 @@ app.post('/api/pagos', upload.single('comprobante'), (req, res) => {
 // 5. Configurar el mes (Activar nuevo periodo)
 app.post('/api/admin/config-mes', adminAuth, (req, res) => {
     const { mes_nombre, precio_base, descuento, link_deuna, link_loja } = req.body;
+    const valPrecioBase = parseFloat(precio_base) || 0;
+    const valDescuento = parseFloat(descuento) || 0;
 
     db.serialize(() => {
         // Desactivamos meses anteriores
@@ -230,7 +242,7 @@ app.post('/api/admin/config-mes', adminAuth, (req, res) => {
         // Insertamos el nuevo mes configurado como activo y abierto
         db.run(
             "INSERT INTO meses_config (mes_nombre, precio_base, descuento, activo, abierto, link_deuna, link_loja) VALUES (?, ?, ?, 1, 1, ?, ?)",
-            [mes_nombre, precio_base, descuento, link_deuna || '', link_loja || ''],
+            [mes_nombre, valPrecioBase, valDescuento, link_deuna || '', link_loja || ''],
             (err) => {
                 if (err) return res.status(500).json({ error: err.message });
                 res.json({ success: true, mensaje: `Mes ${mes_nombre} activado.` });
@@ -242,10 +254,12 @@ app.post('/api/admin/config-mes', adminAuth, (req, res) => {
 // 5b. Actualizar datos del periodo activo actual
 app.put('/api/admin/config-mes', adminAuth, (req, res) => {
     const { mes_nombre, precio_base, descuento, link_deuna, link_loja } = req.body;
+    const valPrecioBase = parseFloat(precio_base) || 0;
+    const valDescuento = parseFloat(descuento) || 0;
 
     db.run(
         "UPDATE meses_config SET mes_nombre = ?, precio_base = ?, descuento = ?, link_deuna = ?, link_loja = ? WHERE activo = 1",
-        [mes_nombre, precio_base, descuento || 0, link_deuna || '', link_loja || ''],
+        [mes_nombre, valPrecioBase, valDescuento, link_deuna || '', link_loja || ''],
         function(err) {
             if (err) return res.status(500).json({ error: err.message });
             if (this.changes === 0) {
@@ -266,7 +280,12 @@ app.get('/api/admin/descuentos', adminAuth, (req, res) => {
         ORDER BY p.nombre ASC`;
     db.all(query, (err, rows) => {
         if (err) return res.status(500).json({ error: err.message });
-        res.json(rows);
+        const parsedRows = rows.map(r => ({
+            ...r,
+            descuento: parseFloat(r.descuento) || 0,
+            recargo: parseFloat(r.recargo) || 0
+        }));
+        res.json(parsedRows);
     });
 });
 
@@ -363,8 +382,8 @@ app.get('/api/admin/ingresos', adminAuth, (req, res) => {
     db.get(query, (err, row) => {
         if (err) return res.status(500).json({ error: err.message });
         res.json({ 
-            total: row.total_mes || 0,
-            total_historico: row.total_historico || 0
+            total: parseFloat(row?.total_mes) || 0,
+            total_historico: parseFloat(row?.total_historico) || 0
         });
     });
 });
@@ -380,7 +399,11 @@ app.get('/api/admin/pagos-recibidos', adminAuth, (req, res) => {
     `;
     db.all(query, [], (err, rows) => {
         if (err) return res.status(500).json({ error: err.message });
-        res.json(rows);
+        const parsed = rows.map(r => ({
+            ...r,
+            monto_pagado: parseFloat(r.monto_pagado) || 0
+        }));
+        res.json(parsed);
     });
 });
 
@@ -409,7 +432,14 @@ app.get('/api/admin/historial-general', adminAuth, (req, res) => {
     `;
     db.all(query, [], (err, rows) => {
         if (err) return res.status(500).json({ error: err.message });
-        res.json(rows);
+        const parsed = rows.map(r => ({
+            ...r,
+            precio_base: parseFloat(r.precio_base) || 0,
+            descuento_aplicado: parseFloat(r.descuento_aplicado) || 0,
+            recargo_aplicado: parseFloat(r.recargo_aplicado) || 0,
+            precio_final_pagado: parseFloat(r.precio_final_pagado) || 0
+        }));
+        res.json(parsed);
     });
 });
 
@@ -423,10 +453,78 @@ app.post('/api/admin/validar-pago', adminAuth, (req, res) => {
         return res.status(400).json({ error: 'Estado de validación inválido' });
     }
     
-    db.run("UPDATE pagos SET estado = ? WHERE id = ?", [estado, pago_id], (err) => {
-        if (err) return res.status(500).json({ error: err.message });
-        res.json({ success: true, mensaje: `Pago ${estado} con éxito.` });
-    });
+    if (estado === 'aprobado') {
+        // Obtener detalles del pago a aprobar
+        db.get("SELECT profesor_id, mes_id, monto_pagado, comprobante_path, estado FROM pagos WHERE id = ?", [pago_id], (err, pago) => {
+            if (err) return res.status(500).json({ error: err.message });
+            if (!pago) return res.status(404).json({ error: 'Pago no encontrado' });
+
+            // Si ya está aprobado, no hacer nada más
+            if (pago.estado === 'aprobado') {
+                return res.json({ success: true, mensaje: 'El pago ya estaba aprobado.' });
+            }
+
+            // Buscar deudas en meses anteriores al mes de este pago
+            const queryDeudas = `
+                SELECT m.id as mes_id, m.precio_base, COALESCE(d.descuento, 0) as dcto, COALESCE(d.recargo, 0) as rcgo
+                FROM meses_config m
+                JOIN profesores p ON p.id = ?
+                LEFT JOIN descuentos_mes d ON d.mes_id = m.id AND d.profesor_id = p.id
+                WHERE m.activo = 0 
+                AND m.id < ?
+                AND m.id >= COALESCE(p.mes_ingreso_id, 1)
+                AND m.id NOT IN (
+                    SELECT mes_id FROM pagos WHERE profesor_id = p.id AND estado = 'aprobado'
+                )
+            `;
+
+            db.all(queryDeudas, [pago.profesor_id, pago.mes_id], (err, deudas) => {
+                if (err) return res.status(500).json({ error: err.message });
+
+                db.serialize(() => {
+                    let totalDeudaPasada = 0;
+                    let errorOcurrido = false;
+
+                    deudas.forEach(d => {
+                        const costoMes = Math.max(0, Number(d.precio_base) - Number(d.dcto) + Number(d.rcgo));
+                        totalDeudaPasada += costoMes;
+
+                        // Insertar pago aprobado para el mes anterior
+                        db.run(
+                            "INSERT INTO pagos (profesor_id, mes_id, monto_pagado, comprobante_path, estado) VALUES (?, ?, ?, ?, 'aprobado')",
+                            [pago.profesor_id, d.mes_id, costoMes, pago.comprobante_path],
+                            (errIns) => {
+                                if (errIns) {
+                                    console.error("Error al registrar pago de deuda pasada:", errIns.message);
+                                    errorOcurrido = true;
+                                }
+                            }
+                        );
+                    });
+
+                    // Si hay deuda pasada cubierta, descontar del pago actual
+                    const nuevoMontoActual = Math.max(0, Number(pago.monto_pagado) - totalDeudaPasada);
+
+                    // Actualizar el pago actual a aprobado con el saldo restante
+                    db.run(
+                        "UPDATE pagos SET estado = 'aprobado', monto_pagado = ? WHERE id = ?",
+                        [nuevoMontoActual, pago_id],
+                        (errUpd) => {
+                            if (errUpd || errorOcurrido) {
+                                return res.status(500).json({ error: errUpd ? errUpd.message : 'Error al actualizar pagos' });
+                            }
+                            res.json({ success: true, mensaje: `Pago aprobado con éxito. Se cubrieron ${deudas.length} meses de deuda anteriores.` });
+                        }
+                    );
+                });
+            });
+        });
+    } else {
+        db.run("UPDATE pagos SET estado = ? WHERE id = ?", [estado, pago_id], (err) => {
+            if (err) return res.status(500).json({ error: err.message });
+            res.json({ success: true, mensaje: `Pago rechazado con éxito.` });
+        });
+    }
 });
 
 // 11. CRUD Profesores: Listar todos (activos e inactivos)
