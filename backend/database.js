@@ -178,6 +178,8 @@ if (isRunningServer || process.env.FORCE_INIT_DB) {
             db.run("ALTER TABLE descuentos_mes ADD COLUMN IF NOT EXISTS motivo TEXT DEFAULT ''");
             db.run("ALTER TABLE descuentos_mes ADD COLUMN IF NOT EXISTS motivo_descuento TEXT DEFAULT ''");
             db.run("ALTER TABLE descuentos_mes ADD COLUMN IF NOT EXISTS motivo_recargo TEXT DEFAULT ''");
+            db.run("ALTER TABLE meses_config ADD COLUMN IF NOT EXISTS link_deuna TEXT DEFAULT ''");
+            db.run("ALTER TABLE meses_config ADD COLUMN IF NOT EXISTS link_loja TEXT DEFAULT ''");
         } else {
             // SQLite original
             db.all("PRAGMA table_info(profesores)", (err, columns) => {
@@ -222,6 +224,19 @@ if (isRunningServer || process.env.FORCE_INIT_DB) {
                             db.run("ALTER TABLE descuentos_mes ADD COLUMN motivo_recargo TEXT DEFAULT ''");
                         }
                     });
+
+                    // Verificar si existen los links en meses_config (SQLite)
+                    db.all("PRAGMA table_info(meses_config)", (err, cols) => {
+                        if (err) return;
+                        const hasLinkDeuna = cols && cols.some(col => col.name === 'link_deuna');
+                        const hasLinkLoja = cols && cols.some(col => col.name === 'link_loja');
+                        if (cols && cols.length > 0 && !hasLinkDeuna) {
+                            db.run("ALTER TABLE meses_config ADD COLUMN link_deuna TEXT DEFAULT ''");
+                        }
+                        if (cols && cols.length > 0 && !hasLinkLoja) {
+                            db.run("ALTER TABLE meses_config ADD COLUMN link_loja TEXT DEFAULT ''");
+                        }
+                    });
                 }
             });
         }
@@ -247,7 +262,9 @@ function crearTablasYSembrar() {
             precio_base REAL,
             descuento REAL DEFAULT 0,
             activo INTEGER DEFAULT 0,
-            abierto INTEGER DEFAULT 1
+            abierto INTEGER DEFAULT 1,
+            link_deuna TEXT DEFAULT '',
+            link_loja TEXT DEFAULT ''
         )`);
 
         // Tabla de Descuentos por Mes y Profesor

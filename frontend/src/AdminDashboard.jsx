@@ -28,15 +28,15 @@ export default function AdminDashboard() {
   const [ingresos, setIngresos] = useState({ total: 0, historico: 0 });
 
   // Formularios de control
-  const [config, setConfig] = useState({ mes_nombre: '', precio_base: 10, descuento: 0 });
+  const [config, setConfig] = useState({ mes_nombre: '', precio_base: 10, descuento: 0, link_deuna: '', link_loja: '' });
   const [nuevoProfe, setNuevoProfe] = useState({ nombre: '', cedula: '', celular: '' });
   const [profeEditando, setProfeEditando] = useState(null); // { id, nombre, cedula, celular, activo }
-  
+
   // Tablas e Historial
   const [historialGeneral, setHistorialGeneral] = useState([]);
   const [searchProfesores, setSearchProfesores] = useState('');
   const [searchHistorial, setSearchHistorial] = useState('');
-  
+
   // Búsqueda de docentes para descuento / recargo
   const [busquedaDocente, setBusquedaDocente] = useState("");
   const [docenteSeleccionado, setDocenteSeleccionado] = useState(null);
@@ -44,10 +44,23 @@ export default function AdminDashboard() {
   const [montoRecargo, setMontoRecargo] = useState("");
   const [motivoDesc, setMotivoDesc] = useState("");
   const [motivoRec, setMotivoRec] = useState("");
-  
+
   // Modales
   const [fotoModal, setFotoModal] = useState(null);
   const [errorDashboard, setErrorDashboard] = useState("");
+  const [notificacion, setNotificacion] = useState(null);
+
+  const mostrarNotificacion = React.useCallback((text, type = 'success') => {
+    setNotificacion({ text, type });
+  }, []);
+
+  useEffect(() => {
+    if (!notificacion) return;
+    const timer = setTimeout(() => {
+      setNotificacion(null);
+    }, 4000);
+    return () => clearTimeout(timer);
+  }, [notificacion]);
 
   // Helper para headers con token
   const getHeaders = React.useCallback(() => ({
@@ -114,7 +127,9 @@ export default function AdminDashboard() {
           setConfig({
             mes_nombre: data.mes_nombre,
             precio_base: data.precio_base,
-            descuento: data.descuento
+            descuento: data.descuento,
+            link_deuna: data.link_deuna || '',
+            link_loja: data.link_loja || ''
           });
         }
       });
@@ -218,11 +233,11 @@ export default function AdminDashboard() {
   const guardarConfig = async (e) => {
     if (e && e.preventDefault) e.preventDefault();
     if (!config.mes_nombre || !config.precio_base) {
-      alert("Por favor complete todos los campos obligatorios del periodo.");
+      mostrarNotificacion("Por favor complete todos los campos obligatorios del periodo.", "warning");
       return;
     }
     if (!window.confirm("⚠️ ¿Seguro que deseas ACTIVAR UN NUEVO PERIODO?\n\nEsto desactivará el periodo actual y registrará como deuda las cuotas pendientes de todos los profesores que no hayan pagado aún.")) return;
-    
+
     try {
       const res = await fetch(`${API_URL}/api/admin/config-mes`, {
         method: 'POST',
@@ -230,13 +245,14 @@ export default function AdminDashboard() {
         body: JSON.stringify(config)
       });
       if (res.ok) {
-        alert("Mes configurado y activado exitosamente.");
+        mostrarNotificacion("Mes configurado y activado exitosamente.", "success");
         cargarTodo();
       } else {
-        alert("Error al guardar configuración.");
+        mostrarNotificacion("Error al guardar configuración.", "error");
       }
     } catch (err) {
       console.error(err);
+      mostrarNotificacion("Error de conexión al guardar configuración.", "error");
     }
   };
 
@@ -244,11 +260,11 @@ export default function AdminDashboard() {
   const actualizarConfig = async (e) => {
     if (e && e.preventDefault) e.preventDefault();
     if (!config.mes_nombre || !config.precio_base) {
-      alert("Por favor complete todos los campos obligatorios del periodo.");
+      mostrarNotificacion("Por favor complete todos los campos obligatorios del periodo.", "warning");
       return;
     }
     if (!mesActual) {
-      alert("No hay ningún periodo activo para actualizar.");
+      mostrarNotificacion("No hay ningún periodo activo para actualizar.", "warning");
       return;
     }
     if (!window.confirm(`¿Seguro que deseas ACTUALIZAR los datos del periodo activo actual ("${mesActual.mes_nombre}")?\n\nEsta acción modificará los valores existentes para todos sin alterar deudas o cerrar periodos.`)) return;
@@ -260,14 +276,15 @@ export default function AdminDashboard() {
         body: JSON.stringify(config)
       });
       if (res.ok) {
-        alert("Periodo activo actualizado exitosamente.");
+        mostrarNotificacion("Periodo activo actualizado exitosamente.", "success");
         cargarTodo();
       } else {
         const data = await res.json();
-        alert(`Error al actualizar: ${data.error || 'error desconocido'}`);
+        mostrarNotificacion(`Error al actualizar: ${data.error || 'error desconocido'}`, "error");
       }
     } catch (err) {
       console.error(err);
+      mostrarNotificacion("Error de conexión al actualizar.", "error");
     }
   };
 
@@ -276,15 +293,15 @@ export default function AdminDashboard() {
     e.preventDefault();
     if (!docenteSeleccionado) return;
     if (!montoDescuento && !montoRecargo) {
-      alert("Por favor ingrese al menos un descuento o un recargo.");
+      mostrarNotificacion("Por favor ingrese al menos un descuento o un recargo.", "warning");
       return;
     }
     try {
       const res = await fetch(`${API_URL}/api/admin/descuentos`, {
         method: 'POST',
         headers: getHeaders(),
-        body: JSON.stringify({ 
-          profesor_id: docenteSeleccionado.id, 
+        body: JSON.stringify({
+          profesor_id: docenteSeleccionado.id,
           descuento: parseFloat(montoDescuento) || 0,
           recargo: parseFloat(montoRecargo) || 0,
           motivo_descuento: motivoDesc,
@@ -298,12 +315,14 @@ export default function AdminDashboard() {
         setMotivoDesc("");
         setMotivoRec("");
         setBusquedaDocente("");
+        mostrarNotificacion("Ajustes de cuota aplicados exitosamente.", "success");
         cargarTodo();
       } else {
-        alert("Error al aplicar los ajustes de cuota.");
+        mostrarNotificacion("Error al aplicar los ajustes de cuota.", "error");
       }
     } catch (err) {
       console.error(err);
+      mostrarNotificacion("Error de conexión al aplicar ajustes.", "error");
     }
   };
 
@@ -330,12 +349,13 @@ export default function AdminDashboard() {
       if (res.ok) {
         const data = await res.json();
         setMesActual(prev => prev ? { ...prev, abierto: data.abierto } : null);
-        alert(`La recepción de pagos ha sido ${data.abierto === 1 ? 'ABIERTA' : 'CERRADA'} con éxito.`);
+        mostrarNotificacion(`La recepción de pagos ha sido ${data.abierto === 1 ? 'ABIERTA' : 'CERRADA'} con éxito.`, "success");
       } else {
-        alert("Error al cambiar estado de recepción de pagos.");
+        mostrarNotificacion("Error al cambiar estado de recepción de pagos.", "error");
       }
     } catch (err) {
       console.error(err);
+      mostrarNotificacion("Error de conexión al cambiar estado.", "error");
     }
   };
 
@@ -348,12 +368,14 @@ export default function AdminDashboard() {
         body: JSON.stringify({ pago_id, estado: nuevoEstado })
       });
       if (res.ok) {
+        mostrarNotificacion(`Comprobante ${nuevoEstado === 'aprobado' ? 'aprobado' : 'rechazado'} con éxito.`, "success");
         cargarTodo();
       } else {
-        alert("Error al validar el pago");
+        mostrarNotificacion("Error al validar el pago", "error");
       }
     } catch (err) {
       console.error(err);
+      mostrarNotificacion("Error de conexión al validar pago.", "error");
     }
   };
 
@@ -369,13 +391,15 @@ export default function AdminDashboard() {
       });
       const data = await res.json();
       if (res.ok) {
+        mostrarNotificacion("Docente registrado exitosamente.", "success");
         setNuevoProfe({ nombre: '', cedula: '', celular: '' });
         cargarTodo();
       } else {
-        alert(`Error: ${data.error}`);
+        mostrarNotificacion(`Error: ${data.error}`, "error");
       }
     } catch (err) {
       console.error(err);
+      mostrarNotificacion("Error de conexión al registrar docente.", "error");
     }
   };
 
@@ -391,13 +415,15 @@ export default function AdminDashboard() {
       });
       const data = await res.json();
       if (res.ok) {
+        mostrarNotificacion("Datos del docente actualizados.", "success");
         setProfeEditando(null);
         cargarTodo();
       } else {
-        alert(`Error: ${data.error}`);
+        mostrarNotificacion(`Error: ${data.error}`, "error");
       }
     } catch (err) {
       console.error(err);
+      mostrarNotificacion("Error de conexión al editar docente.", "error");
     }
   };
 
@@ -410,12 +436,14 @@ export default function AdminDashboard() {
         headers: getHeaders()
       });
       if (res.ok) {
+        mostrarNotificacion("Docente eliminado correctamente.", "success");
         cargarTodo();
       } else {
-        alert("Error al eliminar profesor");
+        mostrarNotificacion("Error al eliminar profesor", "error");
       }
     } catch (err) {
       console.error(err);
+      mostrarNotificacion("Error de conexión al eliminar docente.", "error");
     }
   };
 
@@ -423,7 +451,7 @@ export default function AdminDashboard() {
   const resetDatos = async () => {
     if (!window.confirm("⚠️ ¡ADVERTENCIA! Estás a punto de BORRAR TODOS LOS DATOS de la base (profesores, pagos, descuentos y configuración). Los administradores se conservarán. ¿Estás absolutamente seguro de continuar?")) return;
     if (!window.confirm("¿Confirmas nuevamente que deseas BORRAR TODOS LOS DATOS? Esta acción no se puede deshacer.")) return;
-    
+
     try {
       const res = await fetch(`${API_URL}/api/admin/reset-datos`, {
         method: 'POST',
@@ -431,15 +459,46 @@ export default function AdminDashboard() {
       });
       const data = await res.json();
       if (res.ok) {
-        alert(data.mensaje);
-        handleLogout(); // Opcional: Cerrar sesión tras el reseteo
+        mostrarNotificacion(data.mensaje, "success");
+        setTimeout(() => {
+          handleLogout();
+        }, 1500);
       } else {
-        alert("Error al resetear la base de datos: " + data.error);
+        mostrarNotificacion("Error al resetear la base de datos: " + data.error, "error");
       }
     } catch (err) {
       console.error(err);
-      alert("Error de conexión al intentar resetear");
+      mostrarNotificacion("Error de conexión al intentar resetear", "error");
     }
+  };
+
+  // Helper para generar el enlace de WhatsApp con formato correcto para Ecuador (593)
+  const getWhatsAppLink = (p, soloNumero = false) => {
+    const periodoStr = mesActual ? ` del periodo *${mesActual.mes_nombre}*` : ' de este mes';
+    const urlPago = window.location.origin + window.location.pathname;
+    const texto = `Hola *${p.nombre}*, te recordamos que se encuentra habilitado el pago de internet${periodoStr}.\n\nPuedes registrar tu pago y subir el comprobante aquí:\n👉 ${urlPago}`;
+
+    if (!p.celular) {
+      return soloNumero ? null : `https://wa.me/?text=${encodeURIComponent(texto)}`;
+    }
+
+    let cleanNumber = p.celular.replace(/\D/g, ''); // Remover cualquier carácter no numérico
+
+    // Si empieza con 0, quitarlo (típico de números locales de Ecuador, ej: 0991234567 -> 991234567)
+    if (cleanNumber.startsWith('0')) {
+      cleanNumber = cleanNumber.substring(1);
+    }
+
+    // Si no empieza con 593 y tiene 9 dígitos (longitud de celular en Ecuador sin el 0), le anteponemos el código de país
+    if (!cleanNumber.startsWith('593') && cleanNumber.length === 9) {
+      cleanNumber = `593${cleanNumber}`;
+    }
+
+    if (soloNumero) {
+      return `https://wa.me/${cleanNumber}`;
+    }
+
+    return `https://wa.me/${cleanNumber}?text=${encodeURIComponent(texto)}`;
   };
 
   // --- VISTA DE LOGIN ADMIN ---
@@ -499,7 +558,7 @@ export default function AdminDashboard() {
   // --- VISTA PRINCIPAL DEL DASHBOARD ---
   return (
     <div className="bg-gray-50 min-h-screen text-gray-900">
-      
+
       {/* Navbar Superior */}
       <nav className="bg-slate-900 p-4 text-white flex justify-between items-center shadow-lg sticky top-0 z-40">
         <div className="flex items-center space-x-3">
@@ -516,17 +575,17 @@ export default function AdminDashboard() {
 
       {/* Contenido Principal */}
       <main className="p-6 max-w-7xl mx-auto space-y-8">
-        
+
         {errorDashboard && (
-          <div className="p-4 bg-rose-50 border border-rose-100 text-rose-700 rounded-xl text-sm font-bold flex justify-between">
-            <span>⚠️ {errorDashboard}</span>
-            <button onClick={() => setErrorDashboard("")} className="text-xs font-bold underline">Cerrar</button>
+          <div className="p-4 bg-rose-50/80 backdrop-blur-sm border border-rose-100/60 text-rose-800 rounded-2xl text-sm font-bold flex justify-between items-center shadow-sm animate-fade-in-up">
+            <span className="flex items-center gap-2">⚠️ {errorDashboard}</span>
+            <button onClick={() => setErrorDashboard("")} className="text-rose-400 hover:text-rose-600 text-lg transition font-bold px-2">✕</button>
           </div>
         )}
 
         {/* Métricas Principales */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          
+
           {/* Métrica de Apertura/Cierre Global */}
           <div className="flex flex-col justify-between p-6 bg-white border border-gray-100 shadow-sm rounded-3xl gap-4">
             <div>
@@ -542,19 +601,18 @@ export default function AdminDashboard() {
                 {mesActual ? `Periodo activo: ${mesActual.mes_nombre}` : 'Sin periodo activo configurado'}
               </h2>
               <p className="text-xs text-gray-400 mt-1 mb-4">
-                {mesActual?.abierto === 1 
-                  ? "Los profesores pueden registrar y enviar comprobantes en este momento." 
+                {mesActual?.abierto === 1
+                  ? "Los profesores pueden registrar y enviar comprobantes en este momento."
                   : "La carga de comprobantes está deshabilitada para los profesores."}
               </p>
             </div>
             {mesActual && (
               <button
                 onClick={toggleProcesoPago}
-                className={`w-full sm:w-auto px-6 py-3.5 rounded-2xl font-bold transition-all active:scale-95 shadow-md ${
-                  mesActual.abierto === 1 
-                    ? 'bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200' 
-                    : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-100'
-                }`}
+                className={`w-full sm:w-auto px-6 py-3.5 rounded-2xl font-bold transition-all active:scale-95 shadow-md ${mesActual.abierto === 1
+                  ? 'bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200'
+                  : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-100'
+                  }`}
               >
                 {mesActual.abierto === 1 ? '🔒 Cerrar Proceso de Pago' : '🔓 Abrir Proceso de Pago'}
               </button>
@@ -575,7 +633,7 @@ export default function AdminDashboard() {
               <span className="text-xl font-black text-white">${ingresos.historico.toFixed(2)}</span>
             </div>
           </div>
-          
+
         </div>
 
         {/* Fila superior: Configuración y Gestión de Profesores */}
@@ -612,16 +670,38 @@ export default function AdminDashboard() {
                     />
                   </div>
                 </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Enlace de Pago DeUna</label>
+                    <input
+                      type="url"
+                      placeholder="Ej: https://deuna.app/..."
+                      className="w-full p-3 border border-gray-200 rounded-xl focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition text-sm"
+                      value={config.link_deuna || ''}
+                      onChange={e => setConfig({ ...config, link_deuna: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Enlace de Pago Banco de Loja</label>
+                    <input
+                      type="url"
+                      placeholder="Ej: https://bancodeloja.fin.ec/..."
+                      className="w-full p-3 border border-gray-200 rounded-xl focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition text-sm"
+                      value={config.link_loja || ''}
+                      onChange={e => setConfig({ ...config, link_loja: e.target.value })}
+                    />
+                  </div>
+                </div>
                 <div className="flex flex-col sm:flex-row gap-3 pt-2">
-                  <button 
-                    type="button" 
+                  <button
+                    type="button"
                     onClick={actualizarConfig}
                     className="flex-1 bg-slate-800 hover:bg-slate-700 text-white py-3.5 rounded-xl font-bold transition shadow-md text-xs active:scale-95"
                   >
                     ✍️ Actualizar Periodo Activo
                   </button>
-                  <button 
-                    type="button" 
+                  <button
+                    type="button"
                     onClick={guardarConfig}
                     className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white py-3.5 rounded-xl font-bold transition shadow-md text-xs active:scale-95"
                   >
@@ -637,145 +717,145 @@ export default function AdminDashboard() {
                 <span className="mr-2">🎁</span> Ajustes Especiales de Cuota (Descuentos / Recargos)
               </h3>
               <p className="text-xs text-gray-500 mb-4">Aplica un descuento (a favor) o un recargo (monto adicional) a la cuota de un docente para el periodo activo.</p>
-              
+
               <div className="space-y-4 bg-rose-50/30 p-4 rounded-2xl border border-rose-100">
-                 {/* Buscador */}
-                 <div>
-                    <label className="block text-xs font-bold text-gray-600 mb-2">Buscar Docente:</label>
-                    <input 
-                      type="text" 
-                      placeholder="Escribe un nombre..." 
-                      value={busquedaDocente} 
-                      onChange={e => setBusquedaDocente(e.target.value)} 
-                      className="w-full p-2.5 text-sm border border-gray-200 rounded-xl outline-none focus:border-rose-300" 
-                    />
-                 </div>
-                 
-                 {/* Resultados Buscador */}
-                 {busquedaDocente && (
-                    <div className="max-h-32 overflow-y-auto bg-white border border-gray-200 rounded-xl shadow-lg relative z-10">
-                       {profesores.filter(p => p.nombre.toLowerCase().includes(busquedaDocente.toLowerCase())).map(p => (
-                          <div 
-                            key={p.id} 
-                            onClick={() => {setDocenteSeleccionado(p); setBusquedaDocente('');}} 
-                            className="p-2.5 text-sm hover:bg-rose-50 cursor-pointer border-b last:border-0 border-gray-100 transition"
-                          >
-                             <span className="font-bold text-gray-700">{p.nombre}</span> <span className="text-xs text-gray-400 font-mono ml-2">C.I. {p.cedula}</span>
-                          </div>
-                       ))}
-                       {profesores.filter(p => p.nombre.toLowerCase().includes(busquedaDocente.toLowerCase())).length === 0 && (
-                          <div className="p-3 text-sm text-gray-400 italic">No se encontraron docentes.</div>
-                       )}
+                {/* Buscador */}
+                <div>
+                  <label className="block text-xs font-bold text-gray-600 mb-2">Buscar Docente:</label>
+                  <input
+                    type="text"
+                    placeholder="Escribe un nombre..."
+                    value={busquedaDocente}
+                    onChange={e => setBusquedaDocente(e.target.value)}
+                    className="w-full p-2.5 text-sm border border-gray-200 rounded-xl outline-none focus:border-rose-300"
+                  />
+                </div>
+
+                {/* Resultados Buscador */}
+                {busquedaDocente && (
+                  <div className="max-h-32 overflow-y-auto bg-white border border-gray-200 rounded-xl shadow-lg relative z-10">
+                    {profesores.filter(p => p.nombre.toLowerCase().includes(busquedaDocente.toLowerCase())).map(p => (
+                      <div
+                        key={p.id}
+                        onClick={() => { setDocenteSeleccionado(p); setBusquedaDocente(''); }}
+                        className="p-2.5 text-sm hover:bg-rose-50 cursor-pointer border-b last:border-0 border-gray-100 transition"
+                      >
+                        <span className="font-bold text-gray-700">{p.nombre}</span> <span className="text-xs text-gray-400 font-mono ml-2">C.I. {p.cedula}</span>
+                      </div>
+                    ))}
+                    {profesores.filter(p => p.nombre.toLowerCase().includes(busquedaDocente.toLowerCase())).length === 0 && (
+                      <div className="p-3 text-sm text-gray-400 italic">No se encontraron docentes.</div>
+                    )}
+                  </div>
+                )}
+                {docenteSeleccionado && (
+                  <form onSubmit={aplicarDescuento} className="flex flex-col gap-4 p-4 bg-white border border-rose-200 rounded-xl shadow-sm">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm font-bold text-rose-900">{docenteSeleccionado.nombre}</span>
+                      <button type="button" onClick={() => { setDocenteSeleccionado(null); setMontoDescuento(""); setMontoRecargo(""); setMotivoDesc(""); setMotivoRec(""); }} className="text-xs font-bold text-gray-400 hover:text-rose-500">✕ Cancelar</button>
                     </div>
-                 )}
-                 {docenteSeleccionado && (
-                    <form onSubmit={aplicarDescuento} className="flex flex-col gap-4 p-4 bg-white border border-rose-200 rounded-xl shadow-sm">
-                       <div className="flex justify-between items-center">
-                          <span className="text-sm font-bold text-rose-900">{docenteSeleccionado.nombre}</span>
-                          <button type="button" onClick={() => { setDocenteSeleccionado(null); setMontoDescuento(""); setMontoRecargo(""); setMotivoDesc(""); setMotivoRec(""); }} className="text-xs font-bold text-gray-400 hover:text-rose-500">✕ Cancelar</button>
-                       </div>
-                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div className="space-y-2 p-3 bg-emerald-50/20 border border-emerald-100 rounded-xl">
-                            <label className="block text-[10px] font-bold text-emerald-800 uppercase tracking-wide">Descuento (Restar)</label>
-                            <div className="relative">
-                              <span className="absolute left-2.5 top-2 text-gray-500 font-bold text-xs">$</span>
-                              <input 
-                                type="number" 
-                                step="0.01" 
-                                placeholder="0.00" 
-                                value={montoDescuento} 
-                                onChange={e => setMontoDescuento(e.target.value)} 
-                                className="w-full pl-6 p-1.5 border border-gray-200 rounded-lg text-xs font-bold text-emerald-600 outline-none focus:border-emerald-300" 
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-[9px] font-bold text-gray-400 mb-0.5">Motivo del Descuento</label>
-                              <input 
-                                type="text" 
-                                placeholder="Ej: Beca, Convenio..." 
-                                value={motivoDesc} 
-                                onChange={e => setMotivoDesc(e.target.value)} 
-                                className="w-full p-1.5 border border-gray-200 rounded-lg text-xs outline-none focus:border-emerald-300 text-gray-700" 
-                              />
-                            </div>
-                          </div>
-                          
-                          <div className="space-y-2 p-3 bg-amber-50/20 border border-amber-100 rounded-xl">
-                            <label className="block text-[10px] font-bold text-amber-800 uppercase tracking-wide">Recargo (Sumar)</label>
-                            <div className="relative">
-                              <span className="absolute left-2.5 top-2 text-gray-500 font-bold text-xs">$</span>
-                              <input 
-                                type="number" 
-                                step="0.01" 
-                                placeholder="0.00" 
-                                value={montoRecargo} 
-                                onChange={e => setMontoRecargo(e.target.value)} 
-                                className="w-full pl-6 p-1.5 border border-gray-200 rounded-lg text-xs font-bold text-amber-600 outline-none focus:border-amber-300" 
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-[9px] font-bold text-gray-400 mb-0.5">Motivo del Recargo</label>
-                              <input 
-                                type="text" 
-                                placeholder="Ej: Pago atrasado, Mora..." 
-                                value={motivoRec} 
-                                onChange={e => setMotivoRec(e.target.value)} 
-                                className="w-full p-1.5 border border-gray-200 rounded-lg text-xs outline-none focus:border-amber-300 text-gray-700" 
-                              />
-                            </div>
-                          </div>
-                       </div>
-                       <button type="submit" className="w-full bg-rose-500 hover:bg-rose-650 text-white py-2.5 rounded-lg text-xs font-bold shadow-md shadow-rose-200 transition">
-                         Aplicar Ajustes
-                       </button>
-                    </form>
-                 )}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2 p-3 bg-emerald-50/20 border border-emerald-100 rounded-xl">
+                        <label className="block text-[10px] font-bold text-emerald-800 uppercase tracking-wide">Descuento (Restar)</label>
+                        <div className="relative">
+                          <span className="absolute left-2.5 top-2 text-gray-500 font-bold text-xs">$</span>
+                          <input
+                            type="number"
+                            step="0.01"
+                            placeholder="0.00"
+                            value={montoDescuento}
+                            onChange={e => setMontoDescuento(e.target.value)}
+                            className="w-full pl-6 p-1.5 border border-gray-200 rounded-lg text-xs font-bold text-emerald-600 outline-none focus:border-emerald-300"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[9px] font-bold text-gray-400 mb-0.5">Motivo del Descuento</label>
+                          <input
+                            type="text"
+                            placeholder="Ej: Beca, Convenio..."
+                            value={motivoDesc}
+                            onChange={e => setMotivoDesc(e.target.value)}
+                            className="w-full p-1.5 border border-gray-200 rounded-lg text-xs outline-none focus:border-emerald-300 text-gray-700"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-2 p-3 bg-amber-50/20 border border-amber-100 rounded-xl">
+                        <label className="block text-[10px] font-bold text-amber-800 uppercase tracking-wide">Recargo (Sumar)</label>
+                        <div className="relative">
+                          <span className="absolute left-2.5 top-2 text-gray-500 font-bold text-xs">$</span>
+                          <input
+                            type="number"
+                            step="0.01"
+                            placeholder="0.00"
+                            value={montoRecargo}
+                            onChange={e => setMontoRecargo(e.target.value)}
+                            className="w-full pl-6 p-1.5 border border-gray-200 rounded-lg text-xs font-bold text-amber-600 outline-none focus:border-amber-300"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[9px] font-bold text-gray-400 mb-0.5">Motivo del Recargo</label>
+                          <input
+                            type="text"
+                            placeholder="Ej: Pago atrasado, Mora..."
+                            value={motivoRec}
+                            onChange={e => setMotivoRec(e.target.value)}
+                            className="w-full p-1.5 border border-gray-200 rounded-lg text-xs outline-none focus:border-amber-300 text-gray-700"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                    <button type="submit" className="w-full bg-rose-500 hover:bg-rose-650 text-white py-2.5 rounded-lg text-xs font-bold shadow-md shadow-rose-200 transition">
+                      Aplicar Ajustes
+                    </button>
+                  </form>
+                )}
               </div>
 
               {/* Lista de Ajustes Especiales */}
               <div className="mt-6">
-                 <h4 className="text-xs font-bold text-gray-400 uppercase mb-3">Ajustes activos de cuota</h4>
-                 {descuentos.length === 0 ? (
-                    <p className="text-xs text-gray-400 italic bg-gray-50 p-3 rounded-lg border border-gray-100 text-center">Nadie tiene ajustes aplicados en este periodo.</p>
-                 ) : (
-                    <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
-                       {descuentos.map(d => (
-                          <div key={d.id} className="flex justify-between items-center p-3 bg-gray-50 border border-gray-100 rounded-xl text-sm hover:bg-white hover:border-rose-100 transition shadow-sm">
-                             <div>
-                                <span className="font-bold text-gray-700">{d.nombre}</span>
-                                <span className="text-xs text-gray-400 font-mono ml-2 hidden sm:inline-block">C.I. {d.cedula}</span>
-                                {d.motivo_descuento && (
-                                   <div className="text-[10px] text-emerald-600 italic mt-0.5">
-                                      Motivo Descuento: {d.motivo_descuento}
-                                   </div>
-                                )}
-                                {d.motivo_recargo && (
-                                   <div className="text-[10px] text-amber-600 italic mt-0.5">
-                                      Motivo Recargo: {d.motivo_recargo}
-                                   </div>
-                                )}
-                             </div>
-                             <div className="flex items-center space-x-3">
-                                <div className="flex flex-col items-end space-y-0.5">
-                                   {d.descuento > 0 && (
-                                      <span className="text-emerald-600 text-[11px] font-black bg-emerald-100/70 px-2 py-0.5 rounded-md">
-                                         Descuento: -${d.descuento.toFixed(2)}
-                                      </span>
-                                   )}
-                                   {d.recargo > 0 && (
-                                      <span className="text-amber-600 text-[11px] font-black bg-amber-100/70 px-2 py-0.5 rounded-md">
-                                         Recargo: +${d.recargo.toFixed(2)}
-                                      </span>
-                                   )}
-                                </div>
-                                <button onClick={() => eliminarDescuento(d.id)} className="text-rose-500 hover:text-white hover:bg-rose-500 p-1 rounded-md transition" title="Quitar ajustes">
-                                  🗑️
-                                </button>
-                             </div>
+                <h4 className="text-xs font-bold text-gray-400 uppercase mb-3">Ajustes activos de cuota</h4>
+                {descuentos.length === 0 ? (
+                  <p className="text-xs text-gray-400 italic bg-gray-50 p-3 rounded-lg border border-gray-100 text-center">Nadie tiene ajustes aplicados en este periodo.</p>
+                ) : (
+                  <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
+                    {descuentos.map(d => (
+                      <div key={d.id} className="flex justify-between items-center p-3 bg-gray-50 border border-gray-100 rounded-xl text-sm hover:bg-white hover:border-rose-100 transition shadow-sm">
+                        <div>
+                          <span className="font-bold text-gray-700">{d.nombre}</span>
+                          <span className="text-xs text-gray-400 font-mono ml-2 hidden sm:inline-block">C.I. {d.cedula}</span>
+                          {d.motivo_descuento && (
+                            <div className="text-[10px] text-emerald-600 italic mt-0.5">
+                              Motivo Descuento: {d.motivo_descuento}
+                            </div>
+                          )}
+                          {d.motivo_recargo && (
+                            <div className="text-[10px] text-amber-600 italic mt-0.5">
+                              Motivo Recargo: {d.motivo_recargo}
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex items-center space-x-3">
+                          <div className="flex flex-col items-end space-y-0.5">
+                            {d.descuento > 0 && (
+                              <span className="text-emerald-600 text-[11px] font-black bg-emerald-100/70 px-2 py-0.5 rounded-md">
+                                Descuento: -${d.descuento.toFixed(2)}
+                              </span>
+                            )}
+                            {d.recargo > 0 && (
+                              <span className="text-amber-600 text-[11px] font-black bg-amber-100/70 px-2 py-0.5 rounded-md">
+                                Recargo: +${d.recargo.toFixed(2)}
+                              </span>
+                            )}
                           </div>
-                       ))}
-                    </div>
-                 )}
+                          <button onClick={() => eliminarDescuento(d.id)} className="text-rose-500 hover:text-white hover:bg-rose-500 p-1 rounded-md transition" title="Quitar ajustes">
+                            🗑️
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </section>
           </div>
@@ -785,7 +865,7 @@ export default function AdminDashboard() {
             <h3 className="text-lg font-black text-gray-800 mb-6 flex items-center">
               <span className="mr-2">👥</span> Gestión de Profesores (Clientes)
             </h3>
-            
+
             {/* Formulario Crear / Editar */}
             <form onSubmit={profeEditando ? guardarEdicionProfesor : crearProfesor} className="bg-gray-50/50 p-4 rounded-2xl border border-gray-100 mb-6 space-y-4">
               <span className="block text-xs font-bold text-indigo-600 uppercase tracking-wider">
@@ -797,7 +877,7 @@ export default function AdminDashboard() {
                   placeholder="Nombre completo"
                   className="p-3 bg-white border border-gray-200 rounded-xl text-sm"
                   value={profeEditando ? profeEditando.nombre : nuevoProfe.nombre}
-                  onChange={e => profeEditando 
+                  onChange={e => profeEditando
                     ? setProfeEditando({ ...profeEditando, nombre: e.target.value })
                     : setNuevoProfe({ ...nuevoProfe, nombre: e.target.value })
                   }
@@ -879,31 +959,42 @@ export default function AdminDashboard() {
                   {profesores
                     .filter(p => p.nombre.toLowerCase().includes(searchProfesores.toLowerCase()) || p.cedula.includes(searchProfesores))
                     .map((profe) => (
-                    <tr key={profe.id} className="border-b last:border-0 hover:bg-gray-50/50 transition">
-                      <td className="py-2.5 font-semibold text-gray-800">{profe.nombre}</td>
-                      <td className="py-2.5 text-xs font-mono text-gray-500">{profe.cedula}</td>
-                      <td className="py-2.5 text-xs font-mono text-gray-500">{profe.celular || '-'}</td>
-                      <td className="py-2.5 text-center">
-                        <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold ${profe.activo === 1 ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}`}>
-                          {profe.activo === 1 ? 'Activo' : 'Inactivo'}
-                        </span>
-                      </td>
-                      <td className="py-2.5 text-right space-x-1.5">
-                        <button
-                          onClick={() => setProfeEditando(profe)}
-                          className="text-xs text-indigo-600 hover:text-indigo-800 font-bold"
-                        >
-                          Editar
-                        </button>
-                        <button
-                          onClick={() => eliminarProfesor(profe.id)}
-                          className="text-xs text-rose-600 hover:text-rose-800 font-bold"
-                        >
-                          Eliminar
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
+                      <tr key={profe.id} className="border-b last:border-0 hover:bg-gray-50/50 transition">
+                        <td className="py-2.5 font-semibold text-gray-800">{profe.nombre}</td>
+                        <td className="py-2.5 text-xs font-mono text-gray-500">{profe.cedula}</td>
+                        <td className="py-2.5 text-xs font-mono text-gray-500">
+                          {profe.celular ? (
+                            <a
+                              href={getWhatsAppLink(profe, true)}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-indigo-650 hover:text-indigo-800 hover:underline inline-flex items-center gap-1 font-semibold"
+                            >
+                              💬 {profe.celular}
+                            </a>
+                          ) : '-'}
+                        </td>
+                        <td className="py-2.5 text-center">
+                          <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold ${profe.activo === 1 ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}`}>
+                            {profe.activo === 1 ? 'Activo' : 'Inactivo'}
+                          </span>
+                        </td>
+                        <td className="py-2.5 text-right space-x-1.5">
+                          <button
+                            onClick={() => setProfeEditando(profe)}
+                            className="text-xs text-indigo-600 hover:text-indigo-800 font-bold"
+                          >
+                            Editar
+                          </button>
+                          <button
+                            onClick={() => eliminarProfesor(profe.id)}
+                            className="text-xs text-rose-600 hover:text-rose-800 font-bold"
+                          >
+                            Eliminar
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
                   {profesores.filter(p => p.nombre.toLowerCase().includes(searchProfesores.toLowerCase()) || p.cedula.includes(searchProfesores)).length === 0 && (
                     <tr>
                       <td colSpan={5} className="text-center py-6 text-gray-400 italic text-xs">No se encontraron docentes.</td>
@@ -919,7 +1010,7 @@ export default function AdminDashboard() {
         {/* Sección: Validación de Comprobantes Recibidos */}
         <section className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
           <h3 className="text-lg font-black text-gray-800 mb-6 flex items-center">
-            <span className="mr-2">📸</span> Validación de Comprobantes Recibidos
+            <span className="mr-2"></span> Validación de Comprobantes Recibidos
           </h3>
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
@@ -964,7 +1055,7 @@ export default function AdminDashboard() {
                       >
                         Ver Captura
                       </button>
-                      
+
                       {pago.estado === 'pendiente' && (
                         <>
                           <button
@@ -993,11 +1084,11 @@ export default function AdminDashboard() {
         </section>
 
         {/* Sección de Alertas y Rankings */}
-        
+
         {/* Pendientes */}
         <section className="bg-white p-6 rounded-3xl shadow-sm border border-rose-100">
           <h3 className="text-lg font-black text-rose-600 mb-6 flex justify-between items-center">
-            <span>⚠️ Profesores Pendientes de Pago</span>
+            <span>Profesores Pendientes de Pago</span>
             <span className="bg-rose-500 text-white px-3 py-1 rounded-full text-xs font-bold">
               {pendientes.length} sin pagar
             </span>
@@ -1010,7 +1101,7 @@ export default function AdminDashboard() {
                   <span className="text-[10px] text-gray-400 font-mono">C.I. {p.cedula}</span>
                 </div>
                 <a
-                  href={p.celular ? `https://wa.me/${p.celular}?text=Hola%20${encodeURIComponent(p.nombre)},%20te%20recordamos%20que%20se%20encuentra%20habilitado%20el%20pago%20de%20internet%20de%20este%20mes.` : `https://wa.me/?text=Hola%20${encodeURIComponent(p.nombre)},%20te%20recordamos%20que%20se%20encuentra%20habilitado%20el%20pago%20de%20internet%20de%20este%20mes.`}
+                  href={getWhatsAppLink(p)}
                   target="_blank"
                   rel="noreferrer"
                   className="mt-3 text-xs bg-white text-indigo-600 hover:bg-indigo-50 border border-indigo-200 px-3.5 py-1.5 rounded-full font-bold transition inline-block"
@@ -1029,7 +1120,7 @@ export default function AdminDashboard() {
 
         {/* Fila de Rankings */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          
+
           {/* Ranking Más Cumplidos */}
           <section className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
             <h3 className="text-lg font-black text-emerald-600 mb-6 flex items-center">
@@ -1063,7 +1154,7 @@ export default function AdminDashboard() {
           {/* Ranking Menos Cumplidos */}
           <section className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
             <h3 className="text-lg font-black text-amber-600 mb-6 flex items-center">
-              <span className="mr-2">🚨</span> Profesores menos Cumplidos (Bottom 5)
+              <span className="mr-2">🚨</span> Profesores menos Cumplidos
             </h3>
             <div className="overflow-y-auto max-h-64 pr-1">
               <table className="w-full text-left text-sm">
@@ -1074,7 +1165,7 @@ export default function AdminDashboard() {
                   </tr>
                 </thead>
                 <tbody>
-                  {[...stats].sort((a,b) => a.total_pagos - b.total_pagos).slice(0, 5).map((profe, i) => (
+                  {[...stats].sort((a, b) => a.total_pagos - b.total_pagos).slice(0, 5).map((profe, i) => (
                     <tr key={i} className="border-b last:border-0 hover:bg-gray-50/50 transition">
                       <td className="py-3 font-semibold text-gray-700">{profe.nombre}</td>
                       <td className="py-3 text-center font-mono font-black text-amber-600">{profe.total_pagos}</td>
@@ -1095,10 +1186,10 @@ export default function AdminDashboard() {
         <section className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 mt-8">
           <h3 className="text-lg font-black text-gray-800 mb-6 flex items-center justify-between">
             <div className="flex items-center">
-              <span className="mr-2">📚</span> Historial General de Pagos
+              <span className="mr-2"></span> Historial General de Pagos
             </div>
           </h3>
-          
+
           <div className="mb-4">
             <input
               type="text"
@@ -1125,49 +1216,49 @@ export default function AdminDashboard() {
                 {historialGeneral
                   .filter(h => h.nombre.toLowerCase().includes(searchHistorial.toLowerCase()) || h.mes_nombre.toLowerCase().includes(searchHistorial.toLowerCase()) || h.estado.toLowerCase().includes(searchHistorial.toLowerCase()))
                   .map((h) => (
-                  <tr key={h.id} className="border-b last:border-0 hover:bg-gray-50/50 transition">
-                    <td className="p-4">
-                      <div className="font-bold text-gray-800">{h.nombre}</div>
-                      <div className="text-xs text-gray-400 mt-1">{h.mes_nombre}</div>
-                    </td>
-                    <td className="p-4 font-mono font-bold text-gray-500">${h.precio_base?.toFixed(2)}</td>
-                    <td className="p-4 text-xs font-mono font-bold">
-                      <div className="flex flex-col space-y-0.5">
-                        {h.descuento_aplicado > 0 && (
-                          <span className="text-rose-500">
-                            Desc: -${h.descuento_aplicado.toFixed(2)}
-                            {h.motivo_descuento && <span className="text-[10px] text-gray-400 font-normal italic block">({h.motivo_descuento})</span>}
-                          </span>
+                    <tr key={h.id} className="border-b last:border-0 hover:bg-gray-50/50 transition">
+                      <td className="p-4">
+                        <div className="font-bold text-gray-800">{h.nombre}</div>
+                        <div className="text-xs text-gray-400 mt-1">{h.mes_nombre}</div>
+                      </td>
+                      <td className="p-4 font-mono font-bold text-gray-500">${h.precio_base?.toFixed(2)}</td>
+                      <td className="p-4 text-xs font-mono font-bold">
+                        <div className="flex flex-col space-y-0.5">
+                          {h.descuento_aplicado > 0 && (
+                            <span className="text-rose-500">
+                              Desc: -${h.descuento_aplicado.toFixed(2)}
+                              {h.motivo_descuento && <span className="text-[10px] text-gray-400 font-normal italic block">({h.motivo_descuento})</span>}
+                            </span>
+                          )}
+                          {h.recargo_aplicado > 0 && (
+                            <span className="text-amber-600 font-extrabold mt-1">
+                              Rec: +${h.recargo_aplicado.toFixed(2)}
+                              {h.motivo_recargo && <span className="text-[10px] text-gray-400 font-normal italic block">({h.motivo_recargo})</span>}
+                            </span>
+                          )}
+                          {h.descuento_aplicado === 0 && h.recargo_aplicado === 0 && (
+                            <span className="text-gray-400">-</span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="p-4 font-mono font-bold text-emerald-600">${h.precio_final_pagado?.toFixed(2)}</td>
+                      <td className="p-4 text-center">
+                        <span className={`inline-block px-2.5 py-1 text-[10px] font-bold rounded-full ${h.estado === 'aprobado' ? 'bg-emerald-50 text-emerald-700' : h.estado === 'rechazado' ? 'bg-rose-50 text-rose-700' : 'bg-amber-50 text-amber-700'}`}>
+                          {h.estado.toUpperCase()}
+                        </span>
+                      </td>
+                      <td className="p-4 text-right">
+                        {h.comprobante_path && (
+                          <button
+                            onClick={() => setFotoModal(h.comprobante_path)}
+                            className="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-3 py-1.5 rounded-lg text-xs font-bold transition"
+                          >
+                            Ver
+                          </button>
                         )}
-                        {h.recargo_aplicado > 0 && (
-                          <span className="text-amber-600 font-extrabold mt-1">
-                            Rec: +${h.recargo_aplicado.toFixed(2)}
-                            {h.motivo_recargo && <span className="text-[10px] text-gray-400 font-normal italic block">({h.motivo_recargo})</span>}
-                          </span>
-                        )}
-                        {h.descuento_aplicado === 0 && h.recargo_aplicado === 0 && (
-                          <span className="text-gray-400">-</span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="p-4 font-mono font-bold text-emerald-600">${h.precio_final_pagado?.toFixed(2)}</td>
-                    <td className="p-4 text-center">
-                      <span className={`inline-block px-2.5 py-1 text-[10px] font-bold rounded-full ${h.estado === 'aprobado' ? 'bg-emerald-50 text-emerald-700' : h.estado === 'rechazado' ? 'bg-rose-50 text-rose-700' : 'bg-amber-50 text-amber-700'}`}>
-                        {h.estado.toUpperCase()}
-                      </span>
-                    </td>
-                    <td className="p-4 text-right">
-                      {h.comprobante_path && (
-                        <button
-                          onClick={() => setFotoModal(h.comprobante_path)}
-                          className="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-3 py-1.5 rounded-lg text-xs font-bold transition"
-                        >
-                          Ver
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                    </tr>
+                  ))}
                 {historialGeneral.filter(h => h.nombre.toLowerCase().includes(searchHistorial.toLowerCase()) || h.mes_nombre.toLowerCase().includes(searchHistorial.toLowerCase()) || h.estado.toLowerCase().includes(searchHistorial.toLowerCase())).length === 0 && (
                   <tr>
                     <td colSpan={6} className="text-center py-12 text-gray-400 italic text-sm">No se encontraron registros en el historial.</td>
@@ -1182,7 +1273,7 @@ export default function AdminDashboard() {
         <section className="bg-rose-50 p-6 rounded-3xl shadow-sm border border-rose-200 mt-8">
           <h3 className="text-lg font-black text-rose-700 mb-2 flex items-center justify-between">
             <div className="flex items-center">
-              <span className="mr-2">☢️</span> Zona de Peligro
+              <span className="mr-2"></span> Borro de Datos
             </div>
           </h3>
           <p className="text-sm text-rose-800 mb-4">
@@ -1215,7 +1306,26 @@ export default function AdminDashboard() {
           </div>
         </div>
       )}
-      
+
+      {/* Toast Notification */}
+      {notificacion && (
+        <div className="fixed bottom-5 right-5 z-50 animate-fade-in-up">
+          <div className={`flex items-center gap-3 p-4 rounded-2xl shadow-2xl border backdrop-blur-md transition-all duration-300 max-w-sm ${
+            notificacion.type === 'error' 
+              ? 'bg-rose-50/95 text-rose-800 border-rose-100/60 shadow-rose-100/50' 
+              : notificacion.type === 'warning'
+              ? 'bg-amber-50/95 text-amber-800 border-amber-100/60 shadow-amber-100/50'
+              : 'bg-emerald-50/95 text-emerald-800 border-emerald-100/60 shadow-emerald-100/50'
+          }`}>
+            <span className="text-xl">
+              {notificacion.type === 'error' ? '❌' : notificacion.type === 'warning' ? '⚠️' : '✅'}
+            </span>
+            <span className="text-sm font-bold">{notificacion.text}</span>
+            <button onClick={() => setNotificacion(null)} className="text-gray-400 hover:text-gray-650 font-bold ml-2 text-lg">×</button>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

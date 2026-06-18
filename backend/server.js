@@ -222,15 +222,15 @@ app.post('/api/pagos', upload.single('comprobante'), (req, res) => {
 
 // 5. Configurar el mes (Activar nuevo periodo)
 app.post('/api/admin/config-mes', adminAuth, (req, res) => {
-    const { mes_nombre, precio_base, descuento } = req.body;
+    const { mes_nombre, precio_base, descuento, link_deuna, link_loja } = req.body;
 
     db.serialize(() => {
         // Desactivamos meses anteriores
         db.run("UPDATE meses_config SET activo = 0");
         // Insertamos el nuevo mes configurado como activo y abierto
         db.run(
-            "INSERT INTO meses_config (mes_nombre, precio_base, descuento, activo, abierto) VALUES (?, ?, ?, 1, 1)",
-            [mes_nombre, precio_base, descuento],
+            "INSERT INTO meses_config (mes_nombre, precio_base, descuento, activo, abierto, link_deuna, link_loja) VALUES (?, ?, ?, 1, 1, ?, ?)",
+            [mes_nombre, precio_base, descuento, link_deuna || '', link_loja || ''],
             (err) => {
                 if (err) return res.status(500).json({ error: err.message });
                 res.json({ success: true, mensaje: `Mes ${mes_nombre} activado.` });
@@ -241,11 +241,11 @@ app.post('/api/admin/config-mes', adminAuth, (req, res) => {
 
 // 5b. Actualizar datos del periodo activo actual
 app.put('/api/admin/config-mes', adminAuth, (req, res) => {
-    const { mes_nombre, precio_base, descuento } = req.body;
+    const { mes_nombre, precio_base, descuento, link_deuna, link_loja } = req.body;
 
     db.run(
-        "UPDATE meses_config SET mes_nombre = ?, precio_base = ?, descuento = ? WHERE activo = 1",
-        [mes_nombre, precio_base, descuento || 0],
+        "UPDATE meses_config SET mes_nombre = ?, precio_base = ?, descuento = ?, link_deuna = ?, link_loja = ? WHERE activo = 1",
+        [mes_nombre, precio_base, descuento || 0, link_deuna || '', link_loja || ''],
         function(err) {
             if (err) return res.status(500).json({ error: err.message });
             if (this.changes === 0) {

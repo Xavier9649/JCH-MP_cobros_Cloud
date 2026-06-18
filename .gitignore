@@ -10,6 +10,8 @@ frontend/node_modules/
 
 # Base de datos (se genera automáticamente al iniciar)
 backend/database.db
+database.db
+*.db
 
 # Archivos subidos por usuarios (comprobantes)
 backend/uploads/
