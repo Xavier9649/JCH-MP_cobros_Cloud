@@ -145,7 +145,7 @@ app.get('/api/profesores/:id/historial', (req, res) => {
                     
                     let totalDeuda = 0;
                     deudas.forEach(d => {
-                        totalDeuda += Math.max(0, Number(d.precio_base) - Number(d.dcto)) + Number(d.recargo || d.rcgo || 0);
+                        totalDeuda += Math.max(0, Number(d.precio_base) - Number(d.dcto) + Number(d.recargo || d.rcgo || 0));
                     });
 
                     // 2. Calcular precio del mes actual
@@ -156,7 +156,7 @@ app.get('/api/profesores/:id/historial', (req, res) => {
                         const recargoAplicable = descRow ? (descRow.recargo || 0) : 0;
                         const motivoDesc = descRow ? (descRow.motivo_descuento || '') : '';
                         const motivoRec = descRow ? (descRow.motivo_recargo || '') : '';
-                        const precioMesActual = Math.max(0, Number(mesActivo.precio_base) - Number(descuentoAplicable)) + Number(recargoAplicable);
+                        const precioMesActual = Math.max(0, Number(mesActivo.precio_base) - Number(descuentoAplicable) + Number(recargoAplicable));
                         const precioFinal = precioMesActual + totalDeuda;
                         
                         // 3. Estado del pago actual
@@ -486,7 +486,7 @@ app.post('/api/admin/validar-pago', adminAuth, (req, res) => {
                     let errorOcurrido = false;
 
                     deudas.forEach(d => {
-                        const costoMes = Math.max(0, Number(d.precio_base) - Number(d.dcto)) + Number(d.rcgo);
+                        const costoMes = Math.max(0, Number(d.precio_base) - Number(d.dcto) + Number(d.rcgo));
                         totalDeudaPasada += costoMes;
 
                         // Insertar pago aprobado para el mes anterior
