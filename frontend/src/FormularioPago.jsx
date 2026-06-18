@@ -264,7 +264,7 @@ export default function FormularioPago() {
             </button>
           </form>
           <div className="mt-8 text-center text-xs text-gray-400">
-            Si tienes inconvenientes para ingresar, por favor comunícate con la administración del Conservatorio.
+            Si tienes inconvenientes para ingresar, por favor comunícate con el Administrador.
           </div>
         </div>
       </div>
