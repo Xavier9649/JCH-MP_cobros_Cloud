@@ -156,8 +156,10 @@ app.get('/api/profesores/:id/historial', (req, res) => {
                         const recargoAplicable = descRow ? (descRow.recargo || 0) : 0;
                         const motivoDesc = descRow ? (descRow.motivo_descuento || '') : '';
                         const motivoRec = descRow ? (descRow.motivo_recargo || '') : '';
-                        const precioMesActual = Math.max(0, Number(mesActivo.precio_base) - Number(descuentoAplicable) + Number(recargoAplicable));
-                        const precioFinal = precioMesActual + totalDeuda;
+                        const precioMesActual = Number(mesActivo.precio_base);
+                        const subtotalMes = precioMesActual + Number(recargoAplicable);
+                        const totalSinDescuento = subtotalMes + totalDeuda;
+                        const precioFinal = Math.max(0, totalSinDescuento - Number(descuentoAplicable));
                         
                         // 3. Estado del pago actual
                         const queryPagoActual = `SELECT * FROM pagos WHERE profesor_id = ? AND mes_id = ? ORDER BY fecha_registro DESC LIMIT 1`;
@@ -482,17 +484,21 @@ app.post('/api/admin/validar-pago', adminAuth, (req, res) => {
                 if (err) return res.status(500).json({ error: err.message });
 
                 db.serialize(() => {
-                    let totalDeudaPasada = 0;
+                    let montoRestante = Number(pago.monto_pagado);
                     let errorOcurrido = false;
 
                     deudas.forEach(d => {
                         const costoMes = Math.max(0, Number(d.precio_base) - Number(d.dcto) + Number(d.rcgo));
-                        totalDeudaPasada += costoMes;
+                        
+                        // Distribuimos el dinero pagado. Si el descuento global perdonó la deuda,
+                        // no habrá dinero suficiente para cubrir todo, pero igual se aprueba.
+                        const montoAsignado = Math.min(costoMes, montoRestante);
+                        montoRestante -= montoAsignado;
 
                         // Insertar pago aprobado para el mes anterior
                         db.run(
                             "INSERT INTO pagos (profesor_id, mes_id, monto_pagado, comprobante_path, estado) VALUES (?, ?, ?, ?, 'aprobado')",
-                            [pago.profesor_id, d.mes_id, costoMes, pago.comprobante_path],
+                            [pago.profesor_id, d.mes_id, montoAsignado, pago.comprobante_path],
                             (errIns) => {
                                 if (errIns) {
                                     console.error("Error al registrar pago de deuda pasada:", errIns.message);
@@ -502,8 +508,8 @@ app.post('/api/admin/validar-pago', adminAuth, (req, res) => {
                         );
                     });
 
-                    // Si hay deuda pasada cubierta, descontar del pago actual
-                    const nuevoMontoActual = Math.max(0, Number(pago.monto_pagado) - totalDeudaPasada);
+                    // Si sobra algo del dinero pagado, se asigna al mes actual
+                    const nuevoMontoActual = montoRestante;
 
                     // Actualizar el pago actual a aprobado con el saldo restante
                     db.run(

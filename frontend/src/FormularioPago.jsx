@@ -309,7 +309,7 @@ export default function FormularioPago() {
                     <span className="text-2xl font-black text-indigo-900">{mesActivo.mes_nombre}</span>
                     <div className="flex flex-col mt-3 pt-3 border-t border-indigo-100/50 space-y-2">
                       <div className="flex justify-between items-center">
-                        <span className="text-xs text-indigo-700 font-medium">Cuota del mes actual:</span>
+                        <span className="text-[10px] text-indigo-600 font-bold uppercase tracking-wide">CUOTA DEL MES ACTUAL:</span>
                         <span className="text-sm font-bold text-indigo-600">${mesActivo.precioMesActual?.toFixed(2)}</span>
                       </div>
 
@@ -333,7 +333,7 @@ export default function FormularioPago() {
 
                       {mesActivo.deudaPasada > 0 && (
                         <div className="flex justify-between items-center">
-                          <span className="text-[10px] text-rose-600 font-bold uppercase tracking-wide">⚠️ Deuda meses anteriores:</span>
+                          <span className="text-[10px] text-rose-600 font-bold uppercase tracking-wide">Deuda meses anteriores:</span>
                           <span className="text-sm text-rose-600 font-black">+${mesActivo.deudaPasada.toFixed(2)}</span>
                         </div>
                       )}
