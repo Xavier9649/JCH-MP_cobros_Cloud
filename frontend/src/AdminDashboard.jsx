@@ -1224,7 +1224,7 @@ export default function AdminDashboard() {
             />
           </div>
 
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto max-h-[500px] overflow-y-auto pr-1 custom-scrollbar">
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="bg-gray-50 text-gray-500 text-xs uppercase font-bold">

@@ -532,7 +532,7 @@ export default function FormularioPago() {
             <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
               <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">Historial de Pagos</h3>
 
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto max-h-80 overflow-y-auto pr-1 custom-scrollbar">
                 <table className="w-full text-left text-sm">
                   <thead>
                     <tr className="border-b border-gray-150 text-gray-400 font-bold text-xs uppercase">
