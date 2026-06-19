@@ -156,9 +156,10 @@ if (process.env.DATABASE_URL) {
     db = new PostgresAdapter(process.env.DATABASE_URL);
 
 } else {
-    console.log("Conectando a SQLite (Local)...");
+    const dbPath = process.env.SQLITE_DB_PATH || './database.db';
+    console.log(`Conectando a SQLite (Ruta: ${dbPath})...`);
     const sqlite3 = require('sqlite3').verbose();
-    db = new sqlite3.Database('./database.db');
+    db = new sqlite3.Database(dbPath);
 }
 
 // Inicialización de esquema y semilla (se ejecuta solo al levantar el servidor o forzar con variable de entorno)

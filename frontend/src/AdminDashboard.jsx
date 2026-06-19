@@ -447,6 +447,28 @@ export default function AdminDashboard() {
     }
   };
 
+  // Perdonar Deudas Globales
+  const perdonarDeudasGlobales = async () => {
+    if (!window.confirm("⚠️ ¿Estás seguro de que quieres PERDONAR TODAS LAS DEUDAS ANTERIORES? Esta acción actualizará a todos los docentes para que estén al día, y no se puede deshacer.")) return;
+
+    try {
+      const res = await fetch(`${API_URL}/api/admin/perdonar-deudas`, {
+        method: 'POST',
+        headers: getHeaders()
+      });
+      const data = await res.json();
+      if (res.ok) {
+        mostrarNotificacion(data.mensaje, "success");
+        cargarTodo();
+      } else {
+        mostrarNotificacion("Error al perdonar deudas: " + data.error, "error");
+      }
+    } catch (err) {
+      console.error(err);
+      mostrarNotificacion("Error de conexión al intentar perdonar deudas", "error");
+    }
+  };
+
   // Resetear la base de datos
   const resetDatos = async () => {
     if (!window.confirm("⚠️ ¡ADVERTENCIA! Estás a punto de BORRAR TODOS LOS DATOS de la base (profesores, pagos, descuentos y configuración). Los administradores se conservarán. ¿Estás absolutamente seguro de continuar?")) return;
@@ -640,7 +662,7 @@ export default function AdminDashboard() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
 
           {/* Columna Izquierda: Configurar Mes y Descuentos */}
-          <div className="space-y-8">
+          <div className="space-y-8 h-[700px] flex flex-col">
             <section className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
               <h3 className="text-lg font-black text-gray-800 mb-6 flex items-center">
                 <span className="mr-2">⚙️</span> Configurar Periodo de Cobro
@@ -712,7 +734,7 @@ export default function AdminDashboard() {
             </section>
 
             {/* Nueva Sección de Descuentos Especiales / Ajustes */}
-            <section className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
+            <section className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 flex-1 flex flex-col min-h-0">
               <h3 className="text-lg font-black text-rose-600 mb-4 flex items-center">
                 <span className="mr-2">🎁</span> Ajustes Especiales de Cuota (Descuentos / Recargos)
               </h3>
@@ -813,12 +835,12 @@ export default function AdminDashboard() {
               </div>
 
               {/* Lista de Ajustes Especiales */}
-              <div className="mt-6">
+              <div className="mt-6 flex-1 overflow-y-auto">
                 <h4 className="text-xs font-bold text-gray-400 uppercase mb-3">Ajustes activos de cuota</h4>
                 {descuentos.length === 0 ? (
                   <p className="text-xs text-gray-400 italic bg-gray-50 p-3 rounded-lg border border-gray-100 text-center">Nadie tiene ajustes aplicados en este periodo.</p>
                 ) : (
-                  <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
+                  <div className="space-y-2 pr-1">
                     {descuentos.map(d => (
                       <div key={d.id} className="flex justify-between items-center p-3 bg-gray-50 border border-gray-100 rounded-xl text-sm hover:bg-white hover:border-rose-100 transition shadow-sm">
                         <div>
@@ -861,7 +883,7 @@ export default function AdminDashboard() {
           </div>
 
           {/* CRUD Gestión de Profesores */}
-          <section className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 flex flex-col">
+          <section className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 flex flex-col h-[700px]">
             <h3 className="text-lg font-black text-gray-800 mb-6 flex items-center">
               <span className="mr-2">👥</span> Gestión de Profesores (Clientes)
             </h3>
@@ -944,7 +966,7 @@ export default function AdminDashboard() {
             </div>
 
             {/* Listado de Profesores */}
-            <div className="overflow-y-auto max-h-56 flex-1 pr-1">
+            <div className="overflow-y-auto flex-1 min-h-0 pr-2 custom-scrollbar">
               <table className="w-full text-left text-sm">
                 <thead>
                   <tr className="text-gray-400 text-xs uppercase border-b pb-2">
@@ -1093,28 +1115,30 @@ export default function AdminDashboard() {
               {pendientes.length} sin pagar
             </span>
           </h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
-            {pendientes.map((p) => (
-              <div key={p.id} className="p-4 border border-rose-100/50 rounded-2xl bg-rose-50/20 text-center flex flex-col items-center justify-between">
-                <div>
-                  <span className="block text-sm font-bold text-gray-800">{p.nombre}</span>
-                  <span className="text-[10px] text-gray-400 font-mono">C.I. {p.cedula}</span>
+          <div className="overflow-y-auto max-h-80 pr-2 custom-scrollbar">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+              {pendientes.map((p) => (
+                <div key={p.id} className="p-4 border border-rose-100/50 rounded-2xl bg-rose-50/20 text-center flex flex-col items-center justify-between">
+                  <div>
+                    <span className="block text-sm font-bold text-gray-800">{p.nombre}</span>
+                    <span className="text-[10px] text-gray-400 font-mono">C.I. {p.cedula}</span>
+                  </div>
+                  <a
+                    href={getWhatsAppLink(p)}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="mt-3 text-xs bg-white text-indigo-600 hover:bg-indigo-50 border border-indigo-200 px-3.5 py-1.5 rounded-full font-bold transition inline-block"
+                  >
+                    💬 Recordar por WhatsApp
+                  </a>
                 </div>
-                <a
-                  href={getWhatsAppLink(p)}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="mt-3 text-xs bg-white text-indigo-600 hover:bg-indigo-50 border border-indigo-200 px-3.5 py-1.5 rounded-full font-bold transition inline-block"
-                >
-                  💬 Recordar por WhatsApp
-                </a>
-              </div>
-            ))}
-            {pendientes.length === 0 && (
-              <div className="col-span-full text-center py-6 text-emerald-600 font-bold italic text-sm">
-                🎉 ¡Todos los profesores están al día con sus pagos en este periodo!
-              </div>
-            )}
+              ))}
+              {pendientes.length === 0 && (
+                <div className="col-span-full text-center py-6 text-emerald-600 font-bold italic text-sm">
+                  🎉 ¡Todos los profesores están al día con sus pagos en este periodo!
+                </div>
+              )}
+            </div>
           </div>
         </section>
 
@@ -1269,22 +1293,45 @@ export default function AdminDashboard() {
           </div>
         </section>
 
-        {/* Zona de Peligro (Resetear Datos) */}
+        {/* Zona de Opciones Avanzadas y Peligro */}
         <section className="bg-rose-50 p-6 rounded-3xl shadow-sm border border-rose-200 mt-8">
-          <h3 className="text-lg font-black text-rose-700 mb-2 flex items-center justify-between">
+          <h3 className="text-lg font-black text-rose-700 mb-4 flex items-center justify-between">
             <div className="flex items-center">
-              <span className="mr-2"></span> Borro de Datos
+              <span className="mr-2"></span> Opciones Avanzadas y de Riesgo
             </div>
           </h3>
-          <p className="text-sm text-rose-800 mb-4">
-            Al ejecutar esta acción, se borrarán todos los datos de profesores, pagos y configuración. Únicamente se conservarán los administradores.
-          </p>
-          <button
-            onClick={resetDatos}
-            className="bg-rose-600 hover:bg-rose-700 text-white px-6 py-3 rounded-xl font-bold shadow-lg shadow-rose-200 transition active:scale-95"
-          >
-            Resetear Base de Datos
-          </button>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="bg-white/60 p-5 rounded-2xl border border-rose-100 flex flex-col justify-between">
+              <div>
+                <h4 className="font-bold text-rose-900 mb-1">Perdonar Deudas Globales</h4>
+                <p className="text-xs text-rose-800 mb-4">
+                  Actualiza el mes de ingreso de todos los docentes al mes activo actual. Esto eliminará cualquier deuda pendiente de meses anteriores.
+                </p>
+              </div>
+              <button
+                onClick={perdonarDeudasGlobales}
+                className="bg-amber-500 hover:bg-amber-600 text-white px-4 py-2.5 rounded-xl text-sm font-bold shadow-md shadow-amber-200 transition active:scale-95"
+              >
+                🪄 Perdonar Todas las Deudas
+              </button>
+            </div>
+
+            <div className="bg-white/60 p-5 rounded-2xl border border-rose-100 flex flex-col justify-between">
+              <div>
+                <h4 className="font-bold text-rose-900 mb-1">Borrado Total de Datos</h4>
+                <p className="text-xs text-rose-800 mb-4">
+                  Elimina todos los datos de profesores, pagos y configuración de la base de datos (excepto cuentas de administrador).
+                </p>
+              </div>
+              <button
+                onClick={resetDatos}
+                className="bg-rose-600 hover:bg-rose-700 text-white px-4 py-2.5 rounded-xl text-sm font-bold shadow-md shadow-rose-200 transition active:scale-95"
+              >
+                🚨 Resetear Base de Datos
+              </button>
+            </div>
+          </div>
         </section>
 
       </main>
@@ -1310,13 +1357,12 @@ export default function AdminDashboard() {
       {/* Toast Notification */}
       {notificacion && (
         <div className="fixed bottom-5 right-5 z-50 animate-fade-in-up">
-          <div className={`flex items-center gap-3 p-4 rounded-2xl shadow-2xl border backdrop-blur-md transition-all duration-300 max-w-sm ${
-            notificacion.type === 'error' 
-              ? 'bg-rose-50/95 text-rose-800 border-rose-100/60 shadow-rose-100/50' 
+          <div className={`flex items-center gap-3 p-4 rounded-2xl shadow-2xl border backdrop-blur-md transition-all duration-300 max-w-sm ${notificacion.type === 'error'
+              ? 'bg-rose-50/95 text-rose-800 border-rose-100/60 shadow-rose-100/50'
               : notificacion.type === 'warning'
-              ? 'bg-amber-50/95 text-amber-800 border-amber-100/60 shadow-amber-100/50'
-              : 'bg-emerald-50/95 text-emerald-800 border-emerald-100/60 shadow-emerald-100/50'
-          }`}>
+                ? 'bg-amber-50/95 text-amber-800 border-amber-100/60 shadow-amber-100/50'
+                : 'bg-emerald-50/95 text-emerald-800 border-emerald-100/60 shadow-emerald-100/50'
+            }`}>
             <span className="text-xl">
               {notificacion.type === 'error' ? '❌' : notificacion.type === 'warning' ? '⚠️' : '✅'}
             </span>

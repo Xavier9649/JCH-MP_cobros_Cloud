@@ -589,7 +589,15 @@ app.delete('/api/admin/profesores/:id', adminAuth, (req, res) => {
     });
 });
 
-// 15. Reset de Datos (Limpiar toda la DB menos admins)
+// 15. Perdonar Deudas Globales
+app.post('/api/admin/perdonar-deudas', adminAuth, (req, res) => {
+    db.run("UPDATE profesores SET mes_ingreso_id = (SELECT id FROM meses_config WHERE activo = 1)", (err) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ success: true, mensaje: '¡Todas las deudas anteriores han sido perdonadas! Los docentes ahora están al día con sus pagos pasados.' });
+    });
+});
+
+// 16. Reset de Datos (Limpiar toda la DB menos admins)
 app.post('/api/admin/reset-datos', adminAuth, (req, res) => {
     db.serialize(() => {
         db.run("DELETE FROM pagos");
