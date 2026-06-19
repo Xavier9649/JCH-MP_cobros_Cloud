@@ -1313,7 +1313,7 @@ export default function AdminDashboard() {
                 onClick={perdonarDeudasGlobales}
                 className="bg-amber-500 hover:bg-amber-600 text-white px-4 py-2.5 rounded-xl text-sm font-bold shadow-md shadow-amber-200 transition active:scale-95"
               >
-                🪄 Perdonar Todas las Deudas
+                Perdonar Todas las Deudas
               </button>
             </div>
 
@@ -1328,7 +1328,7 @@ export default function AdminDashboard() {
                 onClick={resetDatos}
                 className="bg-rose-600 hover:bg-rose-700 text-white px-4 py-2.5 rounded-xl text-sm font-bold shadow-md shadow-rose-200 transition active:scale-95"
               >
-                🚨 Resetear Base de Datos
+                Resetear Base de Datos
               </button>
             </div>
           </div>
@@ -1358,10 +1358,10 @@ export default function AdminDashboard() {
       {notificacion && (
         <div className="fixed bottom-5 right-5 z-50 animate-fade-in-up">
           <div className={`flex items-center gap-3 p-4 rounded-2xl shadow-2xl border backdrop-blur-md transition-all duration-300 max-w-sm ${notificacion.type === 'error'
-              ? 'bg-rose-50/95 text-rose-800 border-rose-100/60 shadow-rose-100/50'
-              : notificacion.type === 'warning'
-                ? 'bg-amber-50/95 text-amber-800 border-amber-100/60 shadow-amber-100/50'
-                : 'bg-emerald-50/95 text-emerald-800 border-emerald-100/60 shadow-emerald-100/50'
+            ? 'bg-rose-50/95 text-rose-800 border-rose-100/60 shadow-rose-100/50'
+            : notificacion.type === 'warning'
+              ? 'bg-amber-50/95 text-amber-800 border-amber-100/60 shadow-amber-100/50'
+              : 'bg-emerald-50/95 text-emerald-800 border-emerald-100/60 shadow-emerald-100/50'
             }`}>
             <span className="text-xl">
               {notificacion.type === 'error' ? '❌' : notificacion.type === 'warning' ? '⚠️' : '✅'}
