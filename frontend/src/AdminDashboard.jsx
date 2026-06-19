@@ -662,7 +662,7 @@ export default function AdminDashboard() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
 
           {/* Columna Izquierda: Configurar Mes y Descuentos */}
-          <div className="space-y-8 h-[700px] flex flex-col">
+          <div className="space-y-8 lg:h-[800px] h-auto flex flex-col">
             <section className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
               <h3 className="text-lg font-black text-gray-800 mb-6 flex items-center">
                 <span className="mr-2">⚙️</span> Configurar Periodo de Cobro
@@ -742,7 +742,7 @@ export default function AdminDashboard() {
 
               <div className="space-y-4 bg-rose-50/30 p-4 rounded-2xl border border-rose-100">
                 {/* Buscador */}
-                <div>
+                <div className="relative">
                   <label className="block text-xs font-bold text-gray-600 mb-2">Buscar Docente:</label>
                   <input
                     type="text"
@@ -751,25 +751,25 @@ export default function AdminDashboard() {
                     onChange={e => setBusquedaDocente(e.target.value)}
                     className="w-full p-2.5 text-sm border border-gray-200 rounded-xl outline-none focus:border-rose-300"
                   />
-                </div>
 
-                {/* Resultados Buscador */}
-                {busquedaDocente && (
-                  <div className="max-h-32 overflow-y-auto bg-white border border-gray-200 rounded-xl shadow-lg relative z-10">
-                    {profesores.filter(p => p.nombre.toLowerCase().includes(busquedaDocente.toLowerCase())).map(p => (
-                      <div
-                        key={p.id}
-                        onClick={() => { setDocenteSeleccionado(p); setBusquedaDocente(''); }}
-                        className="p-2.5 text-sm hover:bg-rose-50 cursor-pointer border-b last:border-0 border-gray-100 transition"
-                      >
-                        <span className="font-bold text-gray-700">{p.nombre}</span> <span className="text-xs text-gray-400 font-mono ml-2">C.I. {p.cedula}</span>
-                      </div>
-                    ))}
-                    {profesores.filter(p => p.nombre.toLowerCase().includes(busquedaDocente.toLowerCase())).length === 0 && (
-                      <div className="p-3 text-sm text-gray-400 italic">No se encontraron docentes.</div>
-                    )}
-                  </div>
-                )}
+                  {/* Resultados Buscador */}
+                  {busquedaDocente && (
+                    <div className="absolute left-0 right-0 top-full mt-1 max-h-48 overflow-y-auto bg-white border border-gray-200 rounded-xl shadow-xl z-50">
+                      {profesores.filter(p => p.nombre.toLowerCase().includes(busquedaDocente.toLowerCase())).map(p => (
+                        <div
+                          key={p.id}
+                          onClick={() => { setDocenteSeleccionado(p); setBusquedaDocente(''); }}
+                          className="p-2.5 text-sm hover:bg-rose-50 cursor-pointer border-b last:border-0 border-gray-100 transition"
+                        >
+                          <span className="font-bold text-gray-700">{p.nombre}</span> <span className="text-xs text-gray-400 font-mono ml-2">C.I. {p.cedula}</span>
+                        </div>
+                      ))}
+                      {profesores.filter(p => p.nombre.toLowerCase().includes(busquedaDocente.toLowerCase())).length === 0 && (
+                        <div className="p-3 text-sm text-gray-400 italic">No se encontraron docentes.</div>
+                      )}
+                    </div>
+                  )}
+                </div>
                 {docenteSeleccionado && (
                   <form onSubmit={aplicarDescuento} className="flex flex-col gap-4 p-4 bg-white border border-rose-200 rounded-xl shadow-sm">
                     <div className="flex justify-between items-center">
@@ -835,7 +835,7 @@ export default function AdminDashboard() {
               </div>
 
               {/* Lista de Ajustes Especiales */}
-              <div className="mt-6 flex-1 overflow-y-auto">
+              <div className="mt-6 flex-1 min-h-0 overflow-y-auto">
                 <h4 className="text-xs font-bold text-gray-400 uppercase mb-3">Ajustes activos de cuota</h4>
                 {descuentos.length === 0 ? (
                   <p className="text-xs text-gray-400 italic bg-gray-50 p-3 rounded-lg border border-gray-100 text-center">Nadie tiene ajustes aplicados en este periodo.</p>
@@ -883,7 +883,7 @@ export default function AdminDashboard() {
           </div>
 
           {/* CRUD Gestión de Profesores */}
-          <section className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 flex flex-col h-[700px]">
+          <section className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 flex flex-col lg:h-[800px] h-[700px]">
             <h3 className="text-lg font-black text-gray-800 mb-6 flex items-center">
               <span className="mr-2">👥</span> Gestión de Profesores (Clientes)
             </h3>
