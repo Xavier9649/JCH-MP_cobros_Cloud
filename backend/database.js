@@ -162,13 +162,9 @@ if (process.env.DATABASE_URL) {
     db = new sqlite3.Database(dbPath);
 }
 
-// Inicialización de esquema y semilla (se ejecuta solo al levantar el servidor o forzar con variable de entorno)
-const isRunningServer = require.main && require.main.filename && (
-    require.main.filename.includes('server.js') || 
-    require.main.filename.includes('server.cjs')
-);
-
-if (isRunningServer || process.env.FORCE_INIT_DB) {
+// Inicialización de esquema y semilla
+// Se ejecuta de manera incondicional para garantizar que en entornos de despliegue como Railway (donde require.main cambia) se creen las tablas en la primera conexión.
+if (true) {
     db.serialize(() => {
         if (process.env.DATABASE_URL) {
             // En PostgreSQL creamos las tablas y aplicamos las columnas condicionalmente de forma más directa
