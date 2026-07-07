@@ -292,6 +292,14 @@ function crearTablasYSembrar() {
             FOREIGN KEY(mes_id) REFERENCES meses_config(id)
         )`);
 
+        // Índices para acelerar las consultas más frecuentes
+        db.run(`CREATE INDEX IF NOT EXISTS idx_profesores_cedula ON profesores(cedula)`);
+        db.run(`CREATE INDEX IF NOT EXISTS idx_profesores_activo ON profesores(activo)`);
+        db.run(`CREATE INDEX IF NOT EXISTS idx_pagos_profesor_mes ON pagos(profesor_id, mes_id)`);
+        db.run(`CREATE INDEX IF NOT EXISTS idx_pagos_mes_estado ON pagos(mes_id, estado)`);
+        db.run(`CREATE INDEX IF NOT EXISTS idx_descuentos_mes_profesor ON descuentos_mes(mes_id, profesor_id)`);
+        db.run(`CREATE INDEX IF NOT EXISTS idx_meses_config_activo ON meses_config(activo)`);
+
         // Tabla de Administradores
         db.run(`CREATE TABLE IF NOT EXISTS admins (
             id INTEGER PRIMARY KEY AUTOINCREMENT,

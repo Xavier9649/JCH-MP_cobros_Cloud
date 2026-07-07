@@ -8,6 +8,14 @@ const cloudinary = require('cloudinary').v2;
 const { CloudinaryStorage } = require('multer-storage-cloudinary');
 const db = require('./database');
 
+// Helpers de Promesas para consultas a base de datos
+const dbGet = (sql, params = []) => new Promise((resolve, reject) => {
+    db.get(sql, params, (err, row) => err ? reject(err) : resolve(row));
+});
+const dbAll = (sql, params = []) => new Promise((resolve, reject) => {
+    db.all(sql, params, (err, rows) => err ? reject(err) : resolve(rows));
+});
+
 const app = express();
 
 // Configuración de Cloudinary
@@ -56,7 +64,7 @@ app.post('/api/auth/admin/login', (req, res) => {
         return res.status(400).json({ error: 'Faltan credenciales' });
     }
     const hash = getHash(password);
-    db.get('SELECT * FROM admins WHERE username = ? AND password_hash = ?', [username, hash], (err, row) => {
+    db.get('SELECT id FROM admins WHERE username = ? AND password_hash = ?', [username, hash], (err, row) => {
         if (err) return res.status(500).json({ error: err.message });
         if (row) {
             res.json({ success: true, token: 'admin-secret-token' });
@@ -94,7 +102,7 @@ app.get('/api/profesores', (req, res) => {
 
 // 2. Obtener datos del mes activo y precio final
 app.get('/api/mes-actual', (req, res) => {
-    db.get("SELECT * FROM meses_config WHERE activo = 1", (err, row) => {
+    db.get("SELECT id, mes_nombre, precio_base, descuento, activo, abierto, link_deuna, link_loja FROM meses_config WHERE activo = 1", (err, row) => {
         if (row) {
             const precioFinal = row.precio_base;
             res.json({ ...row, precioFinal });
@@ -105,93 +113,108 @@ app.get('/api/mes-actual', (req, res) => {
 });
 
 // 3. Obtener historial de pagos y estado para un profesor específico
-app.get('/api/profesores/:id/historial', (req, res) => {
+app.get('/api/profesores/:id/historial', async (req, res) => {
     const profesorId = req.params.id;
     
-    // Obtener historial de pagos del profesor
-    const queryPagos = `
-        SELECT p.id as pago_id, p.monto_pagado, p.comprobante_path, p.estado, p.fecha_registro, m.mes_nombre
-        FROM pagos p
-        JOIN meses_config m ON p.mes_id = m.id
-        WHERE p.profesor_id = ?
-        ORDER BY p.fecha_registro DESC`;
-        
-    db.all(queryPagos, [profesorId], (err, pagos) => {
-        if (err) return res.status(500).json({ error: err.message });
+    try {
+        // Query 1: Obtener el mes activo (columnas específicas, sin SELECT *)
+        const queryMesActivo = `
+            SELECT id, mes_nombre, precio_base, descuento, activo, abierto, link_deuna, link_loja 
+            FROM meses_config 
+            WHERE activo = 1`;
+
+        // Query 2: Obtener historial de pagos del profesor
+        const queryPagos = `
+            SELECT p.id as pago_id, p.monto_pagado, p.comprobante_path, p.estado, p.fecha_registro, m.mes_nombre
+            FROM pagos p
+            JOIN meses_config m ON p.mes_id = m.id
+            WHERE p.profesor_id = ?
+            ORDER BY p.fecha_registro DESC`;
+
+        // Query 3: Calcular deuda pasada usando LEFT JOIN (anti-join) en lugar de NOT IN subquery para evitar full table scan
+        const queryDeuda = `
+            SELECT m.id, m.precio_base, COALESCE(d.descuento, 0) as dcto, COALESCE(d.recargo, 0) as rcgo
+            FROM meses_config m
+            JOIN profesores p ON p.id = ?
+            LEFT JOIN descuentos_mes d ON d.mes_id = m.id AND d.profesor_id = p.id
+            LEFT JOIN pagos pg ON pg.mes_id = m.id AND pg.profesor_id = p.id AND pg.estado = 'aprobado'
+            WHERE m.activo = 0 
+            AND m.id >= COALESCE(p.mes_ingreso_id, 1)
+            AND pg.id IS NULL`;
+
+        // Lanzar las 3 consultas iniciales en paralelo
+        const [mesActivo, pagos, deudas] = await Promise.all([
+            dbGet(queryMesActivo),
+            dbAll(queryPagos, [profesorId]),
+            dbAll(queryDeuda, [profesorId])
+        ]);
+
         const parsedPagos = pagos.map(p => ({
             ...p,
             monto_pagado: parseFloat(p.monto_pagado) || 0
         }));
-        
-        // Obtener el mes activo para verificar si ya pagó este mes
-        db.get("SELECT * FROM meses_config WHERE activo = 1", (err, mesActivo) => {
-            if (err) return res.status(500).json({ error: err.message });
-            
-            if (mesActivo) {
-                // 1. Calcular deuda pasada
-                const queryDeuda = `
-                    SELECT m.id, m.precio_base, COALESCE(d.descuento, 0) as dcto, COALESCE(d.recargo, 0) as rcgo
-                    FROM meses_config m
-                    JOIN profesores p ON p.id = ?
-                    LEFT JOIN descuentos_mes d ON d.mes_id = m.id AND d.profesor_id = p.id
-                    WHERE m.activo = 0 
-                    AND m.id >= COALESCE(p.mes_ingreso_id, 1)
-                    AND m.id NOT IN (
-                        SELECT mes_id FROM pagos WHERE profesor_id = p.id AND estado = 'aprobado'
-                    )
-                `;
-                db.all(queryDeuda, [profesorId], (err, deudas) => {
-                    if (err) return res.status(500).json({ error: err.message });
-                    
-                    let totalDeuda = 0;
-                    deudas.forEach(d => {
-                        totalDeuda += Math.max(0, Number(d.precio_base) - Number(d.dcto) + Number(d.recargo || d.rcgo || 0));
-                    });
 
-                    // 2. Calcular precio del mes actual
-                    db.get("SELECT descuento, recargo, motivo_descuento, motivo_recargo FROM descuentos_mes WHERE mes_id = ? AND profesor_id = ?", [mesActivo.id, profesorId], (err, descRow) => {
-                        if (err) return res.status(500).json({ error: err.message });
-                        
-                        const descuentoAplicable = descRow ? descRow.descuento : 0;
-                        const recargoAplicable = descRow ? (descRow.recargo || 0) : 0;
-                        const motivoDesc = descRow ? (descRow.motivo_descuento || '') : '';
-                        const motivoRec = descRow ? (descRow.motivo_recargo || '') : '';
-                        const precioMesActual = Number(mesActivo.precio_base);
-                        const subtotalMes = precioMesActual + Number(recargoAplicable);
-                        const totalSinDescuento = subtotalMes + totalDeuda;
-                        const precioFinal = Math.max(0, totalSinDescuento - Number(descuentoAplicable));
-                        
-                        // 3. Estado del pago actual
-                        const queryPagoActual = `SELECT * FROM pagos WHERE profesor_id = ? AND mes_id = ? ORDER BY fecha_registro DESC LIMIT 1`;
-                        db.get(queryPagoActual, [profesorId, mesActivo.id], (err, pagoActual) => {
-                            if (err) return res.status(500).json({ error: err.message });
-                            res.json({
-                                pagos: parsedPagos,
-                                mesActivo: {
-                                    ...mesActivo,
-                                    precio_base: parseFloat(mesActivo.precio_base) || 0,
-                                    descuento: parseFloat(mesActivo.descuento) || 0,
-                                    precioFinal: parseFloat(precioFinal) || 0, // Cuota actual + deuda
-                                    precioMesActual: parseFloat(precioMesActual) || 0, // Solo cuota actual
-                                    deudaPasada: parseFloat(totalDeuda) || 0,
-                                    descuentoAplicado: parseFloat(descuentoAplicable) || 0,
-                                    recargoAplicado: parseFloat(recargoAplicable) || 0,
-                                    motivoDescuento: motivoDesc,
-                                    motivoRecargo: motivoRec
-                                },
-                                pagoActual: pagoActual ? {
-                                    ...pagoActual,
-                                    monto_pagado: parseFloat(pagoActual.monto_pagado) || 0
-                                } : null
-                            });
-                        });
-                    });
-                });
-            } else {
-                res.json({ pagos: parsedPagos, mesActivo: null, pagoActual: null });
-            }
+        if (!mesActivo) {
+            return res.json({ pagos: parsedPagos, mesActivo: null, pagoActual: null });
+        }
+
+        // Query 4: Descuento/recargo para el mes activo
+        const queryDescuento = `
+            SELECT descuento, recargo, motivo_descuento, motivo_recargo 
+            FROM descuentos_mes 
+            WHERE mes_id = ? AND profesor_id = ?`;
+
+        // Query 5: Estado del pago actual para el mes activo (columnas específicas, sin SELECT *)
+        const queryPagoActual = `
+            SELECT id, profesor_id, mes_id, monto_pagado, comprobante_path, estado, fecha_registro 
+            FROM pagos 
+            WHERE profesor_id = ? AND mes_id = ? 
+            ORDER BY fecha_registro DESC 
+            LIMIT 1`;
+
+        // Lanzar las 2 consultas restantes en paralelo
+        const [descRow, pagoActual] = await Promise.all([
+            dbGet(queryDescuento, [mesActivo.id, profesorId]),
+            dbGet(queryPagoActual, [profesorId, mesActivo.id])
+        ]);
+
+        let totalDeuda = 0;
+        deudas.forEach(d => {
+            totalDeuda += Math.max(0, Number(d.precio_base) - Number(d.dcto) + Number(d.recargo || d.rcgo || 0));
         });
-    });
+
+        const descuentoAplicable = descRow ? descRow.descuento : 0;
+        const recargoAplicable = descRow ? (descRow.recargo || 0) : 0;
+        const motivoDesc = descRow ? (descRow.motivo_descuento || '') : '';
+        const motivoRec = descRow ? (descRow.motivo_recargo || '') : '';
+        const precioMesActual = Number(mesActivo.precio_base);
+        const subtotalMes = precioMesActual + Number(recargoAplicable);
+        const totalSinDescuento = subtotalMes + totalDeuda;
+        const precioFinal = Math.max(0, totalSinDescuento - Number(descuentoAplicable));
+
+        res.json({
+            pagos: parsedPagos,
+            mesActivo: {
+                ...mesActivo,
+                precio_base: parseFloat(mesActivo.precio_base) || 0,
+                descuento: parseFloat(mesActivo.descuento) || 0,
+                precioFinal: parseFloat(precioFinal) || 0, // Cuota actual + deuda
+                precioMesActual: parseFloat(precioMesActual) || 0, // Solo cuota actual
+                deudaPasada: parseFloat(totalDeuda) || 0,
+                descuentoAplicado: parseFloat(descuentoAplicable) || 0,
+                recargoAplicado: parseFloat(recargoAplicable) || 0,
+                motivoDescuento: motivoDesc,
+                motivoRecargo: motivoRec
+            },
+            pagoActual: pagoActual ? {
+                ...pagoActual,
+                monto_pagado: parseFloat(pagoActual.monto_pagado) || 0
+            } : null
+        });
+
+    } catch (err) {
+        return res.status(500).json({ error: err.message });
+    }
 });
 
 // 4. Registrar el pago (con validación de periodo abierto)
@@ -345,10 +368,11 @@ app.get('/api/admin/pendientes', adminAuth, (req, res) => {
         SELECT p.id, p.nombre, p.cedula 
         FROM profesores p
         WHERE p.activo = 1 
-        AND p.id NOT IN (
-            SELECT profesor_id FROM pagos 
-            WHERE mes_id = (SELECT id FROM meses_config WHERE activo = 1) 
-            AND estado != 'rechazado'
+        AND NOT EXISTS (
+            SELECT 1 FROM pagos pag 
+            WHERE pag.profesor_id = p.id 
+              AND pag.mes_id = (SELECT id FROM meses_config WHERE activo = 1) 
+              AND pag.estado != 'rechazado'
         )`;
 
     db.all(query, (err, rows) => {
@@ -393,7 +417,8 @@ app.get('/api/admin/ingresos', adminAuth, (req, res) => {
 // 9. Obtener todos los pagos del mes actual para revisar comprobantes
 app.get('/api/admin/pagos-recibidos', adminAuth, (req, res) => {
     const query = `
-        SELECT p.*, prof.nombre, prof.cedula, prof.celular
+        SELECT p.id, p.profesor_id, p.mes_id, p.monto_pagado, p.comprobante_path, p.estado, p.fecha_registro,
+               prof.nombre, prof.cedula, prof.celular
         FROM pagos p
         JOIN profesores prof ON p.profesor_id = prof.id
         WHERE p.mes_id = (SELECT id FROM meses_config WHERE activo = 1)
@@ -472,12 +497,11 @@ app.post('/api/admin/validar-pago', adminAuth, (req, res) => {
                 FROM meses_config m
                 JOIN profesores p ON p.id = ?
                 LEFT JOIN descuentos_mes d ON d.mes_id = m.id AND d.profesor_id = p.id
+                LEFT JOIN pagos pg ON pg.mes_id = m.id AND pg.profesor_id = p.id AND pg.estado = 'aprobado'
                 WHERE m.activo = 0 
                 AND m.id < ?
                 AND m.id >= COALESCE(p.mes_ingreso_id, 1)
-                AND m.id NOT IN (
-                    SELECT mes_id FROM pagos WHERE profesor_id = p.id AND estado = 'aprobado'
-                )
+                AND pg.id IS NULL
             `;
 
             db.all(queryDeudas, [pago.profesor_id, pago.mes_id], (err, deudas) => {

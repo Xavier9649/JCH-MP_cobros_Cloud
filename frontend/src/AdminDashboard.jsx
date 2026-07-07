@@ -36,6 +36,8 @@ export default function AdminDashboard() {
   const [historialGeneral, setHistorialGeneral] = useState([]);
   const [searchProfesores, setSearchProfesores] = useState('');
   const [searchHistorial, setSearchHistorial] = useState('');
+  const [searchPagosRecibidos, setSearchPagosRecibidos] = useState('');
+  const [filtroEstadoPagosRecibidos, setFiltroEstadoPagosRecibidos] = useState('todos');
 
   // Búsqueda de docentes para descuento / recargo
   const [busquedaDocente, setBusquedaDocente] = useState("");
@@ -835,7 +837,7 @@ export default function AdminDashboard() {
               </div>
 
               {/* Lista de Ajustes Especiales */}
-              <div className="mt-6 flex-1 min-h-0 overflow-y-auto">
+              <div className="mt-6 flex-1 min-h-0 max-h-60 overflow-y-auto pr-1 custom-scrollbar">
                 <h4 className="text-xs font-bold text-gray-400 uppercase mb-3">Ajustes activos de cuota</h4>
                 {descuentos.length === 0 ? (
                   <p className="text-xs text-gray-400 italic bg-gray-50 p-3 rounded-lg border border-gray-100 text-center">Nadie tiene ajustes aplicados en este periodo.</p>
@@ -1032,9 +1034,35 @@ export default function AdminDashboard() {
         {/* Sección: Validación de Comprobantes Recibidos */}
         <section className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
           <h3 className="text-lg font-black text-gray-800 mb-6 flex items-center">
-            <span className="mr-2"></span> Validación de Comprobantes Recibidos
+            <span className="mr-2">📋</span> Validación de Comprobantes Recibidos
           </h3>
-          <div className="overflow-x-auto">
+
+          {/* Controles de Búsqueda y Filtrado */}
+          <div className="flex flex-col sm:flex-row gap-3 mb-6">
+            <div className="flex-1">
+              <input
+                type="text"
+                placeholder="🔍 Buscar por nombre o cédula del profesor..."
+                value={searchPagosRecibidos}
+                onChange={e => setSearchPagosRecibidos(e.target.value)}
+                className="w-full p-2.5 text-sm border border-gray-200 rounded-xl outline-none focus:border-indigo-300 bg-gray-50/50"
+              />
+            </div>
+            <div className="w-full sm:w-48">
+              <select
+                value={filtroEstadoPagosRecibidos}
+                onChange={e => setFiltroEstadoPagosRecibidos(e.target.value)}
+                className="w-full p-2.5 text-sm border border-gray-200 rounded-xl outline-none focus:border-indigo-300 bg-gray-50/50 text-gray-750 font-semibold"
+              >
+                <option value="todos">👁️ Mostrar Todos</option>
+                <option value="pendiente">⏳ Pendientes</option>
+                <option value="aprobado">✅ Aprobados</option>
+                <option value="rechazado">❌ Rechazados</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="overflow-x-auto max-h-[400px] overflow-y-auto pr-1 custom-scrollbar">
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="bg-gray-50 text-gray-500 text-xs uppercase font-bold">
@@ -1046,61 +1074,77 @@ export default function AdminDashboard() {
                 </tr>
               </thead>
               <tbody>
-                {pagosRecibidos.map((pago) => (
-                  <tr key={pago.id} className="border-b last:border-0 hover:bg-gray-50/50 transition">
-                    <td className="p-4 font-bold text-gray-800">{pago.nombre}</td>
-                    <td className="p-4 font-mono font-bold text-gray-700">${pago.monto_pagado?.toFixed(2)}</td>
-                    <td className="p-4 text-xs text-gray-400">
-                      {new Date(pago.fecha_registro).toLocaleString()}
-                    </td>
-                    <td className="p-4 text-center">
-                      {pago.estado === 'pendiente' && (
-                        <span className="inline-block px-2.5 py-1 text-xs font-bold rounded-full bg-amber-50 text-amber-700 border border-amber-100">
-                          Pendiente de Revisión
-                        </span>
-                      )}
-                      {pago.estado === 'aprobado' && (
-                        <span className="inline-block px-2.5 py-1 text-xs font-bold rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100">
-                          Aprobado
-                        </span>
-                      )}
-                      {pago.estado === 'rechazado' && (
-                        <span className="inline-block px-2.5 py-1 text-xs font-bold rounded-full bg-rose-50 text-rose-700 border border-rose-100">
-                          Rechazado
-                        </span>
-                      )}
-                    </td>
-                    <td className="p-4 text-right space-x-2">
-                      <button
-                        onClick={() => setFotoModal(pago.comprobante_path)}
-                        className="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-3.5 py-2 rounded-xl text-xs font-bold shadow-sm transition"
-                      >
-                        Ver Captura
-                      </button>
+                {pagosRecibidos
+                  .filter(pago => {
+                    const matchesSearch = pago.nombre.toLowerCase().includes(searchPagosRecibidos.toLowerCase()) || 
+                                          (pago.cedula && pago.cedula.includes(searchPagosRecibidos));
+                    const matchesStatus = filtroEstadoPagosRecibidos === 'todos' || pago.estado === filtroEstadoPagosRecibidos;
+                    return matchesSearch && matchesStatus;
+                  })
+                  .map((pago) => (
+                    <tr key={pago.id} className="border-b last:border-0 hover:bg-gray-50/50 transition">
+                      <td className="p-4 font-bold text-gray-800">{pago.nombre}</td>
+                      <td className="p-4 font-mono font-bold text-gray-700">${pago.monto_pagado?.toFixed(2)}</td>
+                      <td className="p-4 text-xs text-gray-400">
+                        {new Date(pago.fecha_registro).toLocaleString()}
+                      </td>
+                      <td className="p-4 text-center">
+                        {pago.estado === 'pendiente' && (
+                          <span className="inline-block px-2.5 py-1 text-xs font-bold rounded-full bg-amber-50 text-amber-700 border border-amber-100">
+                            Pendiente de Revisión
+                          </span>
+                        )}
+                        {pago.estado === 'aprobado' && (
+                          <span className="inline-block px-2.5 py-1 text-xs font-bold rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100">
+                            Aprobado
+                          </span>
+                        )}
+                        {pago.estado === 'rechazado' && (
+                          <span className="inline-block px-2.5 py-1 text-xs font-bold rounded-full bg-rose-50 text-rose-700 border border-rose-100">
+                            Rechazado
+                          </span>
+                        )}
+                      </td>
+                      <td className="p-4 text-right space-x-2">
+                        <button
+                          onClick={() => setFotoModal(pago.comprobante_path)}
+                          className="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-3.5 py-2 rounded-xl text-xs font-bold shadow-sm transition"
+                        >
+                          Ver Captura
+                        </button>
 
-                      {pago.estado === 'pendiente' && (
-                        <>
-                          <button
-                            onClick={() => validarPago(pago.id, 'aprobado')}
-                            className="bg-emerald-600 hover:bg-emerald-750 text-white px-3.5 py-2 rounded-xl text-xs font-bold shadow-sm shadow-emerald-100 transition active:scale-95"
-                          >
-                            Aprobar
-                          </button>
-                          <button
-                            onClick={() => validarPago(pago.id, 'rechazado')}
-                            className="bg-rose-50 hover:bg-rose-100 text-rose-750 px-3.5 py-2 rounded-xl text-xs font-bold border border-rose-200 transition active:scale-95"
-                          >
-                            Rechazar
-                          </button>
-                        </>
-                      )}
-                    </td>
-                  </tr>
-                ))}
+                        {pago.estado === 'pendiente' && (
+                          <>
+                            <button
+                              onClick={() => validarPago(pago.id, 'aprobado')}
+                              className="bg-emerald-600 hover:bg-emerald-750 text-white px-3.5 py-2 rounded-xl text-xs font-bold shadow-sm shadow-emerald-100 transition active:scale-95"
+                            >
+                              Aprobar
+                            </button>
+                            <button
+                              onClick={() => validarPago(pago.id, 'rechazado')}
+                              className="bg-rose-50 hover:bg-rose-100 text-rose-750 px-3.5 py-2 rounded-xl text-xs font-bold border border-rose-200 transition active:scale-95"
+                            >
+                              Rechazar
+                            </button>
+                          </>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
               </tbody>
             </table>
-            {pagosRecibidos.length === 0 && (
-              <p className="text-center py-12 text-gray-400 italic text-sm">Aún no hay ningún comprobante subido para el periodo activo.</p>
+            {pagosRecibidos.filter(pago => {
+              const matchesSearch = pago.nombre.toLowerCase().includes(searchPagosRecibidos.toLowerCase()) || 
+                                    (pago.cedula && pago.cedula.includes(searchPagosRecibidos));
+              const matchesStatus = filtroEstadoPagosRecibidos === 'todos' || pago.estado === filtroEstadoPagosRecibidos;
+              return matchesSearch && matchesStatus;
+            }).length === 0 && (
+              <p className="text-center py-12 text-gray-400 italic text-sm">
+                {pagosRecibidos.length === 0 
+                  ? "Aún no hay ningún comprobante subido para el periodo activo." 
+                  : "No se encontraron comprobantes con el criterio de búsqueda o filtro especificado."}
+              </p>
             )}
           </div>
         </section>
