@@ -26,3 +26,6 @@ frontend/dist/
 # Sistema operativo
 .DS_Store
 Thumbs.db
+
+# Guías y documentación personal
+guia_*.md
