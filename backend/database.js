@@ -31,9 +31,12 @@ if (!process.env.DATABASE_URL) {
 // ══════════════════════════════════════════════════════════════
 class PostgresAdapter {
     constructor(connectionString) {
+        // Desactivar SSL para conexiones locales (localhost / 127.0.0.1) como en el pipeline de CI
+        const isLocal = connectionString.includes('localhost') || connectionString.includes('127.0.0.1');
+        
         this.pool = new Pool({
             connectionString,
-            ssl: { rejectUnauthorized: false }, // Requerido por Railway/Render/Neon
+            ssl: isLocal ? false : { rejectUnauthorized: false }, // Requerido por Azure/Railway/Render/Neon en producción
         });
         this.queue = [];
         this.running = false;
