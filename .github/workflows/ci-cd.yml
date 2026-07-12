@@ -63,8 +63,8 @@ jobs:
     name: Deploy to Azure
     runs-on: ubuntu-latest
     needs: test
-    # Solo ejecutar deploy si es un push a main (evitar deploy en pull requests)
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    # DESACTIVADO TEMPORALMENTE: Cambiado a 'if: false' para que no realice deploy automático hasta conectar perfiles de publicación y secretos.
+    if: false
 
     steps:
       - name: Checkout Code

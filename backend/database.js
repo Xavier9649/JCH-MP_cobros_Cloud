@@ -7,7 +7,16 @@ function getHash(password) {
     return crypto.createHash('sha256').update(password).digest('hex');
 }
 
-// ── Validación temprana ────────────────────────────────────────
+// ── Validación temprana y construcción de DATABASE_URL ──────────
+if (!process.env.DATABASE_URL && process.env.DB_HOST) {
+    const dbUser = process.env.DB_USER || '';
+    const dbPassword = process.env.DB_PASSWORD || '';
+    const dbHost = process.env.DB_HOST;
+    const dbPort = process.env.DB_PORT || 5432;
+    const dbName = process.env.DB_NAME || '';
+    process.env.DATABASE_URL = `postgresql://${dbUser}:${dbPassword}@${dbHost}:${dbPort}/${dbName}`;
+}
+
 if (!process.env.DATABASE_URL) {
     console.error('ERROR FATAL: La variable de entorno DATABASE_URL no está definida.');
     console.error('Crea el archivo backend/.env con tu cadena de conexión PostgreSQL.');
