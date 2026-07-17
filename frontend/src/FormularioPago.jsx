@@ -277,7 +277,7 @@ export default function FormularioPago() {
     return (
       <div className="min-h-screen flex">
         {/* Panel izquierdo — Marca */}
-        <div className="hidden md:flex md:w-5/12 lg:w-2/5 bg-blue-600 flex-col justify-between p-12">
+        <div className="hidden md:flex md:w-5/12 lg:w-2/5 bg-red-600 flex-col justify-between p-12">
           <div className="flex items-center gap-3 text-white">
             <IconMusic />
             <span className="font-semibold text-base tracking-tight">Internet Conservatorio</span>
@@ -286,11 +286,11 @@ export default function FormularioPago() {
             <h1 className="text-4xl font-bold text-white leading-snug mb-4">
               Portal de Pagos para Docentes
             </h1>
-            <p className="text-blue-100 text-base leading-relaxed">
+            <p className="text-red-100 text-base leading-relaxed">
               Registra y gestiona tus comprobantes de pago del servicio de internet de forma sencilla y segura.
             </p>
           </div>
-          <p className="text-blue-200 text-sm">
+          <p className="text-red-200 text-sm">
             Sistema de Cobros — Conservatorio JCH
           </p>
         </div>
