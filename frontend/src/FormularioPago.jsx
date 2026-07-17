@@ -304,7 +304,7 @@ export default function FormularioPago() {
               <span className="font-semibold text-sm">Internet Conservatorio</span>
             </div>
 
-            <h2 className="text-2xl font-bold text-slate-900 mb-1">Bienvenido</h2>
+            <h2 className="text-2xl font-bold text-slate-900 mb-1">Hola, Bienvenido</h2>
             <p className="text-slate-500 text-sm mb-8">
               Ingresa tu número de cédula para acceder al portal
             </p>
